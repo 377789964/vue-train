@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module">
+        // reactive 创建一个响应式对象
+        // effect 副作用函数 默认会执行一次， 数据变化后会再次执行
+        // import { reactive, effect } from "/node_modules/@vue/reactivity/dist/reactivity.esm-browser.js"
+        import { reactive, effect } from './reactivity.esm.js'
+        // const state = {
+        //     name: 'jw',
+        //     age: 30
+        //     // n: {
+        //     //     n: 1
+        //     // }
+        // }
+        // const p1 = reactive(state)
+        // const p2 = reactive(state)
+        // // const p2 = reactive(p1)
+
+        // console.log(p1 === p2)
+
+        const state = reactive({
+            name: 'jw',
+            age: 30
+            // n: {
+            //     n: 1
+            // }
+        })
+        effect(() => {
+            document.getElementById('app').innerHTML = state.name + state.age
+        })
+
+        // effect(() => {
+        //     document.getElementById('app').innerHTML = state.name + state.age
+        // })
+
+        setTimeout(() => {
+            state.name = 'zf' // 值变化了
+        }, 1000);
+
+    </script>
+    
+</body>
+</html>
