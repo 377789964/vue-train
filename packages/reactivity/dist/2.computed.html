@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module">
+        // reactive 创建一个响应式对象
+        // effect 副作用函数 默认会执行一次， 数据变化后会再次执行
+        // import { reactive, effect, computed } from "/node_modules/@vue/reactivity/dist/reactivity.esm-browser.js"
+        import { reactive, effect, computed } from './reactivity.esm.js'
+
+        const state = reactive({
+            flag: true,
+            name: 'jw',
+            age: 30,
+            n: {
+                n: 1
+            }
+        })
+        let aliasName = computed({
+            get() {
+                console.log('默认不执行')
+                return "*" + state.name
+            },
+            set(newValue) {
+                // 这里当我们修改aliasName的时候 可以出发其他的修改
+            }
+        })
+
+        // 去值的时候会执行方法，访问三次会值执行一次
+        // aliasName.value
+        // aliasName.value
+        // aliasName.value
+
+        // 修改依赖，再去取值会重新执行
+        // state.name = 'zf' 
+        // aliasName.value
+
+        // 计算属性内部需哟一个变量，这个变量控制是否要重新执行 dirty默认需要执行
+        // 默认durty: true 执行后拿到返回值结果并缓存，修改dirty为false
+        // 如果依赖的值变化了，再次更新dirty为true，再次取值的时候就会执行拿到新值
+        effect(() => {
+            app.innerHTML = aliasName.value
+            console.log(aliasName, 'aliasName')
+        })
+
+        setTimeout(() => {
+            state.name = 'zf'
+        }, 1000)
+    </script>
+    
+</body>
+</html>

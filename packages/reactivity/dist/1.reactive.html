@@ -27,24 +27,40 @@
         // console.log(p1 === p2)
 
         const state = reactive({
+            flag: true,
             name: 'jw',
-            age: 30
-            // n: {
-            //     n: 1
-            // }
+            age: 30,
+            n: {
+                n: 1
+            }
         })
-        effect(() => {
-            document.getElementById('app').innerHTML = state.name + state.age
+        const runner = effect(() => {
+            // state.age = Math.random()
+            console.log('---')
+            document.getElementById('app').innerHTML = state.flag ? state.name : state.age
+        }, {
+            scheduler() {
+                setTimeout(() => {
+                    runner()
+                })
+                console.log('数据变化了', this)
+            }
         })
-
+        // runner.effect.stop()
         // effect(() => {
         //     document.getElementById('app').innerHTML = state.name + state.age
         // })
-
+        console.log(state.n, '---')
         setTimeout(() => {
-            state.name = 'zf' // 值变化了
+            state.flag = false
+            // runner()
+            // state.flag = false
+            // setTimeout(() => {
+            //     state.name = 'zf' // 值变化了
+            //     // state.age = 70
+            // })
         }, 1000);
-
+  
     </script>
     
 </body>
