@@ -5,6 +5,10 @@ export const enum ReactiveFlags {
     IS_REACTIVE = "__v_isReactive"
 }
 
+export function isReactive(target) {
+    return !!(target && target[ReactiveFlags.IS_REACTIVE])
+}
+
 // const mutableHandlers = {
 //     get(target, key, receiver) {
 //         if (ReactiveFlags.IS_REACTIVE === key) {

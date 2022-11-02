@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module">
+        // reactive 创建一个响应式对象
+        // effect 副作用函数 默认会执行一次， 数据变化后会再次执行
+        // import { reactive, effect, computed } from "/node_modules/@vue/reactivity/dist/reactivity.esm-browser.js"
+        import { reactive, effect, watch } from './reactivity.esm.js'
+
+        const state = reactive({
+            flag: true,
+            name: 'jw',
+            age: 30,
+            n: {
+                n: 1
+            }
+        })
+
+        // watch就是effect 状态会收集 属性变化后 会出发scheduler
+        // 数据比变化后就调用回调方法
+        // 常见的两种方式，直接监控对象 或者 监控某个属性(参数一是函数的话对象监测不到需要属性deep:true)
+        // watch一般不会立即执行，immediate:true会立即执行
+        watch(() => state.name, (newValue, oldValue) => {
+            console.log(newValue, oldValue, 'watch')
+        }, {
+            immediate: true
+        })
+        state.name = 'zf'
+
+        state.name = 'ljj'
+
+        // 默认的effect 会在组件中用 渲染effect 计算属性effect 用户effect
+
+    </script>
+    
+</body>
+</html>
