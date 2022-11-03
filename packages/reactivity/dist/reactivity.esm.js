@@ -70,21 +70,21 @@ function trigger(target, key, newValue, oldValue) {
     return;
   }
   const dep = depsMap.get(key);
-  if (dep) {
-    triggerEffect(dep);
-  }
+  triggerEffect(dep);
 }
 function triggerEffect(dep) {
-  const effects = [...dep];
-  effects.forEach((effect2) => {
-    if (activeEffect != effect2) {
-      if (!effect2.scheduler) {
-        effect2.run();
-      } else {
-        effect2.scheduler();
+  if (dep) {
+    const effects = [...dep];
+    effects.forEach((effect2) => {
+      if (activeEffect != effect2) {
+        if (!effect2.scheduler) {
+          effect2.run();
+        } else {
+          effect2.scheduler();
+        }
       }
-    }
-  });
+    });
+  }
 }
 
 // packages/shared/src/index.ts
@@ -237,6 +237,74 @@ function doWatch(source, cb, { immediate } = {}) {
   }
   oldValue = effect2.run();
 }
+
+// packages/reactivity/src/ref.ts
+function ref(value) {
+  return new RefImpl(value);
+}
+function toReactive(value) {
+  return isObject(value) ? reactive(value) : value;
+}
+var RefImpl = class {
+  constructor(rawValue) {
+    this.rawValue = rawValue;
+    this.dep = void 0;
+    this.__v_isRef = true;
+    this._value = toReactive(rawValue);
+  }
+  get value() {
+    if (activeEffect) {
+      trackEffect(this.dep || (this.dep = /* @__PURE__ */ new Set()));
+    }
+    return this._value;
+  }
+  set value(newValue) {
+    if (newValue !== this.rawValue) {
+      this._value = toReactive(newValue);
+      this.rawValue = newValue;
+      triggerEffect(this.dep);
+    }
+  }
+};
+var ObjectRefImpl = class {
+  constructor(_object, _key) {
+    this._object = _object;
+    this._key = _key;
+    this.__v_isRef = true;
+  }
+  get value() {
+    return this._object[this._key];
+  }
+  set value(newValue) {
+    this._object[this._key] = newValue;
+  }
+};
+function toRef(target, key) {
+  return new ObjectRefImpl(target, key);
+}
+function toRefs(target) {
+  const ret = {};
+  for (let key in target) {
+    ret[key] = toRef(target, key);
+  }
+  return ret;
+}
+function proxyRefs(objectWithRefs) {
+  return new Proxy(objectWithRefs, {
+    get(target, key, receiver) {
+      let v = Reflect.get(target, key, receiver);
+      return v.__v_isRef ? v.value : v;
+    },
+    set(target, key, value, receiver) {
+      const oldValue = target[key];
+      if (oldValue.__v_isRef) {
+        oldValue.value = value;
+        return true;
+      }
+      return Reflect.set(target, key, value, receiver);
+    }
+  });
+}
 export {
   ReactiveEffect,
   ReactiveFlags,
@@ -245,7 +313,11 @@ export {
   doWatch,
   effect,
   isReactive,
+  proxyRefs,
   reactive,
+  ref,
+  toRef,
+  toRefs,
   track,
   trackEffect,
   trigger,

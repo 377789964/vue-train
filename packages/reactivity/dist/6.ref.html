@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module">
+        import { reactive, effect, computed, watch, watchEffect, ref, toRef, toRefs, proxyRefs } from './reactivity.esm.js'
+
+        // ref处理基本类型处理成响应式 或者换对象的引用处理成响应式
+        // 一般对象使用reactive函数 是将对戏的属性处理成响应式
+        let person = reactive({
+            name: 'zf',
+            age: 13
+        })
+        const flag = ref(true)
+
+        // let { name, age } = person // 结构后name age失去响应效果
+        // let name = toRef(person, 'name') // name依然有响应效果
+        // let age = toRef(person, 'age') // name依然有响应效果
+        // let { name, age } = toRefs(person)
+        let personRefs = toRefs(person)
+        
+
+        watchEffect(() => {
+            // app.innerHTML = flag.value ? name.value : age.value
+            let { name, age } = proxyRefs(personRefs) // 将响应式对象再变回去,使用时不需要.value取值
+            app.innerHTML = flag.value ? name : age
+        })
+
+        setTimeout(() => {
+            flag.value = false
+        }, 1000)
+
+
+    </script>
+    
+</body>
+</html>

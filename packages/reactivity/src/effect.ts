@@ -94,26 +94,25 @@ export function trigger(target, key, newValue, oldValue) {
         return
     }
     const dep = depsMap.get(key)
-     if(dep) {
-        triggerEffect(dep)
-     }
+    triggerEffect(dep)
 }
 export function triggerEffect(dep) {
-    const effects = [...dep]
-    effects.forEach(effect => {
-        // console.log(effect, 'trigger')
-        // 当我重新执行effect时，会将当前的effect放在全局上activeEffect
-        // 避免当前efect中修改了当前key的值，这样会死循环
-        if (activeEffect != effect) {
-            // console.log(effect, 'effect')
-            if (!effect.scheduler) { // 如果没有scheduler执行run
-                effect.run()
-            } else { // 如果有scheduler则执行scheduler不执行run
-                effect.scheduler()
+    if (dep) {
+        const effects = [...dep]
+        effects.forEach(effect => {
+            // console.log(effect, 'trigger')
+            // 当我重新执行effect时，会将当前的effect放在全局上activeEffect
+            // 避免当前efect中修改了当前key的值，这样会死循环
+            if (activeEffect != effect) {
+                // console.log(effect, 'effect')
+                if (!effect.scheduler) { // 如果没有scheduler执行run
+                    effect.run()
+                } else { // 如果有scheduler则执行scheduler不执行run
+                    effect.scheduler()
+                }
             }
-        }
-        
-    });
+        });
+    }
 }
 
 // 默认执行了一个set，在当前的set中清空了effect，又向此set中添加了一项
