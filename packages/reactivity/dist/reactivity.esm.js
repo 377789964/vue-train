@@ -201,7 +201,13 @@ function traverse(source, s = /* @__PURE__ */ new Set()) {
   }
   return source;
 }
-function watch(source, cb, { immediate } = {}) {
+function watch(source, cb, options) {
+  doWatch(source, cb, options);
+}
+function watchEffect(effect2, options) {
+  doWatch(effect2, null, options);
+}
+function doWatch(source, cb, { immediate } = {}) {
   let getter;
   if (isReactive(source)) {
     getter = () => traverse(source);
@@ -209,10 +215,21 @@ function watch(source, cb, { immediate } = {}) {
     getter = source;
   }
   let oldValue;
+  let cleanup;
+  const onCleanup = (userCb) => {
+    cleanup = userCb;
+  };
   const job = () => {
-    let newValue = effect2.run();
-    cb(newValue, oldValue);
-    oldValue = newValue;
+    if (cb) {
+      let newValue = effect2.run();
+      if (cleanup) {
+        cleanup();
+      }
+      cb(newValue, oldValue, onCleanup);
+      oldValue = newValue;
+    } else {
+      effect2.run();
+    }
   };
   const effect2 = new ReactiveEffect(getter, job);
   if (immediate) {
@@ -225,6 +242,7 @@ export {
   ReactiveFlags,
   activeEffect,
   computed,
+  doWatch,
   effect,
   isReactive,
   reactive,
@@ -232,6 +250,7 @@ export {
   trackEffect,
   trigger,
   triggerEffect,
-  watch
+  watch,
+  watchEffect
 };
 //# sourceMappingURL=reactivity.esm.js.map
