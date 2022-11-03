@@ -1,4 +1,4 @@
-import { DeprecationTypes } from "vue";
+import { recordEffectScope } from "./effectScope";
 
 // import { ReactiveEffect } from "vue";
 export let activeEffect;
@@ -16,7 +16,9 @@ export class ReactiveEffect {
     public active = true;
     public deps = [];
     public parent = undefined
-    constructor(public fn, private scheduler) {}
+    constructor(public fn, private scheduler) {
+        recordEffectScope(this)
+    }
     run() {
         if(!this.active) { // 停止操作
             return this.fn() // 直接执行函数

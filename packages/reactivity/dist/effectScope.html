@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module">
+        import { reactive, effect, computed, watch, watchEffect, ref, toRef, toRefs, proxyRefs, effectScope } from './reactivity.esm.js'
+
+        const scope = effectScope()
+        scope.run(() => {
+            let state = reactive({ age: 30 })
+            effect(() => {
+                console.log(state.age)
+            })
+            setTimeout(() => {
+                state.age++
+            }, 2000)
+            // const scope = effectScope() // 子作用域不独立，外层stop内层也会stop
+            const scope = effectScope(true) // 子作用域独立，外层stop后内层不会stop会继续执行
+            scope.run(() => {
+                let state = reactive({ age: 35 })
+                effect(() => {
+                    console.log(state.age)
+                })
+                setTimeout(() => {
+                    state.age++
+                }, 2000)
+                
+            })
+        })
+        // scope.run(() => {
+        //     let state = reactive({ age: 30 })
+        //     effect(() => {
+        //         console.log(state.age)
+        //     })
+        //     setTimeout(() => {
+        //         state.age++
+        //     }, 2000)
+        // })
+
+        scope.stop()
+        
+
+
+
+    </script>
+    
+</body>
+</html>
