@@ -50,6 +50,7 @@ function cleanupEffect(effect2) {
   for (let i = 0; i < deps.length; i++) {
     deps[i].delete(effect2);
   }
+  effect2.deps.length = 0;
 }
 var ReactiveEffect = class {
   constructor(fn, scheduler) {
@@ -228,7 +229,7 @@ function computed(getterOrOptions) {
     setter = noop;
   } else {
     getter = getterOrOptions.get;
-    setter = getterOrOptions.set;
+    setter = getterOrOptions.set || noop;
   }
   return new ComputedRefImpl(getter, setter);
 }

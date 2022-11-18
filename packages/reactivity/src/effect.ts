@@ -10,6 +10,7 @@ function cleanupEffect(effect) {
     for(let i = 0; i<deps.length; i++) {
         deps[i].delete(effect)
     }
+    effect.deps.length = 0
 }
 
 export class ReactiveEffect {
@@ -39,7 +40,7 @@ export class ReactiveEffect {
         if (this.active) {
             cleanupEffect(this) // 首先清除effect
             this.active = false // 修改为失活状态
-        } 
+        }
     }
 }
 // 依赖收集就是吧当前的efect变成全局的，稍后取值的时候可以拿到这个

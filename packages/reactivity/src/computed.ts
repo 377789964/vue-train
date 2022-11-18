@@ -46,7 +46,7 @@ export function computed(getterOrOptions) {
         setter = noop
     } else {
         getter = getterOrOptions.get
-        setter = getterOrOptions.set
+        setter = getterOrOptions.set || noop
     }
 
     // getter方法必须存在
