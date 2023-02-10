@@ -6,7 +6,7 @@ export const nodeOps = {
     },
     insert(child, parent, anchor) {
         // 有移动性  a b c d -> a c b d
-        parent.inserBefore(child, anchor || null)
+        parent.insertBefore(child, anchor || null)
     },
     remove(child) {
         const parent = child.parentNode

@@ -10,7 +10,18 @@
     <div id="app"></div>
     <script type="module">
         // import { createRenderer, h } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
-        import './runtime-dom.esm.js'
+        // import './runtime-dom.esm.js'
+
+        import { h, render } from './runtime-dom.esm.js'
+        // 渲染
+        render(h('div', {style: {color: "red"}}, h('span', 'hello')), app)
+        // 卸载
+        setTimeout(() => {
+            render(null, app)
+        }, 1000)
+
+        // console.log(h('div', {color: 'red'}, h('span', 'hello')), 'h')
+        // console.log(createRenderer)
 
         // const { render } = createRenderer({
         //     createElement(tagName) {
