@@ -6,6 +6,10 @@ export function isVnode(vnode){
     return vnode.__v_isVnode == true
 }
 
+export function isSameVNode(n1, n2) {
+    return n1.type === n2.type && n1.key === n2.key
+}
+
 export function createVNode(type, props = null, children = null) {
     // 组件
     // 元素

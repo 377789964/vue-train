@@ -14,10 +14,12 @@
 
         import { h, render } from './runtime-dom.esm.js'
         // 渲染
-        render(h('div', {style: {color: "red"}}, h('span', 'hello')), app)
+        render(h('div', {style: {color: "red", background: 'bule'}}, h('span', 'hello')), app)
         // 卸载
         setTimeout(() => {
-            render(null, app)
+            // render(null, app) // 卸载
+            // render(h('p'), app)
+            render(h('div', {style: {color: "green", background: 'yellow'}}, h('span', 'hello')), app)
         }, 1000)
 
         // console.log(h('div', {color: 'red'}, h('span', 'hello')), 'h')

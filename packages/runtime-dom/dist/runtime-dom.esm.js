@@ -111,6 +111,9 @@ function isString(value) {
 function isVnode(vnode) {
   return vnode.__v_isVnode == true;
 }
+function isSameVNode(n1, n2) {
+  return n1.type === n2.type && n1.key === n2.key;
+}
 function createVNode(type, props = null, children = null) {
   const shapeFlag = isString(type) ? 1 /* ELEMENT */ : 0;
   const vnode = {
@@ -175,6 +178,11 @@ function createRenderer(options) {
       patch(null, children[i], el);
     }
   };
+  const unmountChildren = (children, el) => {
+    for (let i = 0; i < children.length; i++) {
+      unmount(children[i]);
+    }
+  };
   const mountElemet = (vnode, container) => {
     const { type, props, children, shapeFlag } = vnode;
     const el = vnode.el = hostCreateElement(type);
@@ -190,17 +198,63 @@ function createRenderer(options) {
     }
     hostInsert(el, container);
   };
+  const patchProps = (oldProps, newProps, el) => {
+    if (oldProps !== newProps) {
+      for (let key in newProps) {
+        const prev = oldProps[key];
+        const next = newProps[key];
+        if (prev != next) {
+          hostPatchProp(el, key, prev, next);
+        }
+      }
+      for (let key in oldProps) {
+        if (!(key in newProps)) {
+          const prev = oldProps[key];
+          hostPatchProp(el, key, prev, null);
+        }
+      }
+    }
+  };
+  const patchChildren = (n1, n2, el) => {
+    const c1 = n1.children;
+    const c2 = n2.children;
+    const prevShapeFlag = n1.shapeFlag;
+    const shapeFlag = n2.shapeFlag;
+    if (shapeFlag & 8 /* TEXT_CHILDREN */) {
+      if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
+        unmountChildren(c1, el);
+      }
+    }
+  };
+  const patchElement = (n1, n2) => {
+    let el = n2.el = n1.el;
+    const oldProps = n1.props || {};
+    const newProps = n2.props || {};
+    patchProps(oldProps, newProps, el);
+  };
+  const processElement = (n1, n2, container) => {
+    if (n1 == null) {
+      mountElemet(n2, container);
+    } else {
+      patchElement(n1, n2);
+    }
+  };
   const patch = (n1, n2, container) => {
     if (n1 == n2) {
       return;
     }
-    if (n1 == null) {
-      mountElemet(n2, container);
-    } else {
+    if (n1 && !isSameVNode(n1, n2)) {
+      unmount(n1);
+      n1 = null;
     }
+    processElement(n1, n2, container);
   };
+  const unmount = (vnode) => hostRemove(vnode.el);
   const render2 = (vnode, container) => {
     if (vnode == null) {
+      if (container._vnode) {
+        unmount(container._vnode);
+      }
     } else {
       patch(container._vnode || null, vnode, container);
     }
@@ -220,6 +274,7 @@ export {
   createRenderer,
   createVNode,
   h,
+  isSameVNode,
   isVnode,
   render
 };

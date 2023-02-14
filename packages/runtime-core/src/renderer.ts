@@ -1,4 +1,5 @@
 import { ShapeFlags } from "@vue/shared"
+import { isSameVNode } from "./vnode"
 
 export function createRenderer(options) {
     const {
@@ -17,6 +18,12 @@ export function createRenderer(options) {
     const  mountChildren = (children, el) => {
         for(let i = 0; i < children.length; i++) {
             patch(null, children[i], el)
+        }
+    }
+
+    const  unmountChildren = (children, el) => {
+        for(let i = 0; i < children.length; i++) {
+            unmount(children[i])
         }
     }
 
@@ -39,24 +46,81 @@ export function createRenderer(options) {
         hostInsert(el, container)
     }
 
-    const patch = (n1, n2, container) => {
-        if(n1 == n2) {
-            return // 无需更新
+    const patchProps = (oldProps, newProps, el) => {
+        if(oldProps !== newProps) {
+            for(let key in newProps) {
+                const prev = oldProps[key]
+                const next = newProps[key]
+                if(prev != next) { // 新的改掉老的
+                    hostPatchProp(el, key, prev, next)
+                }
+            }
+            for(let key in oldProps) {
+                if(!(key in newProps)) { // 清空老的
+                    const prev = oldProps[key]
+                    hostPatchProp(el, key, prev, null)
+                }
+            }
         }
+    }
+
+    const patchChildren = (n1, n2, el) => {
+        // 比较 两方孩子差异
+        const c1 = n1.children
+        const c2 = n2.children
+
+        const prevShapeFlag = n1.shapeFlag
+        const shapeFlag = n2.shapeFlag
+
+        if(shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+            if(prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+                unmountChildren(c1, el)
+            }
+        }
+    }
+
+    const patchElement = (n1, n2) => { // 比对n1n2的属性差异
+        let el = n2.el = n1.el // 复用元素
+        const oldProps = n1.props || {}
+        const newProps = n2.props || {}
+        patchProps(oldProps, newProps, el)
+        // patchChildren(n1, n2, el)
+    }
+
+    const processElement = (n1, n2, container) => {
         if(n1 == null) {
             // 初次渲染
             mountElemet(n2, container)
         } else {
             // diff算法
-
+            patchElement(n1, n2)
         }
     }
+
+    const patch = (n1, n2, container) => {
+        // console.log(n1, n2, 'n1-n2')
+        if(n1 == n2) {
+            return // 无需更新
+        }
+        // n1 div => n2 p n1n2都有值，但是类型不同删除n1 换n2
+        if(n1 && !isSameVNode(n1, n2)) {
+            unmount(n1); // 删除节点
+            n1 = null
+        }
+        processElement(n1, n2, container)
+    }
+
+    const unmount = (vnode) => hostRemove(vnode.el)
 
     const render = (vnode, container) => {
         // console.log(container, 'container')
         // vnode + dom api = 真是dom => 插入到container中
         if(vnode == null) { 
             // 卸载 删除节点
+            if(container._vnode) { // 说明渲染过了才需要进行卸载
+                unmount(container._vnode)
+
+            }
 
         }else {
             // 初次渲染 更新
