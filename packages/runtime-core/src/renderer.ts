@@ -64,6 +64,10 @@ export function createRenderer(options) {
         }
     }
 
+    const patchKeyChildren = (c1, c2, el) => {
+
+    }
+
     const patchChildren = (n1, n2, el) => {
         // 比较 两方孩子差异
         const c1 = n1.children
@@ -71,10 +75,35 @@ export function createRenderer(options) {
 
         const prevShapeFlag = n1.shapeFlag
         const shapeFlag = n2.shapeFlag
-
+        // 新的是文本
         if(shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+            // 老的是数组
             if(prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
                 unmountChildren(c1, el)
+            }
+            if(c1 !== c2) {
+                // 文本内容不相同
+                hostSetElementText(el, c2)
+            }
+        } else {
+            // 老的是数组
+            if(prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+                if(shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+                    // 新的是数组 diff算法 全量diff算法
+                    patchKeyChildren(c1, c2, el)
+                }else {
+                    // 组新的不是数组
+                    unmountChildren(c1, el)
+                }
+            } else {
+                // 老的是文本
+                if(prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
+                    hostSetElementText(el, '')
+                }
+                // 新的是数组
+                if(shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+                    mountChildren(c2, el)
+                }
             }
         }
     }
@@ -84,7 +113,7 @@ export function createRenderer(options) {
         const oldProps = n1.props || {}
         const newProps = n2.props || {}
         patchProps(oldProps, newProps, el)
-        // patchChildren(n1, n2, el)
+        patchChildren(n1, n2, el)
     }
 
     const processElement = (n1, n2, container) => {
@@ -119,9 +148,7 @@ export function createRenderer(options) {
             // 卸载 删除节点
             if(container._vnode) { // 说明渲染过了才需要进行卸载
                 unmount(container._vnode)
-
             }
-
         }else {
             // 初次渲染 更新
             patch(container._vnode || null, vnode, container)

@@ -215,6 +215,8 @@ function createRenderer(options) {
       }
     }
   };
+  const patchKeyChildren = (c1, c2, el) => {
+  };
   const patchChildren = (n1, n2, el) => {
     const c1 = n1.children;
     const c2 = n2.children;
@@ -224,6 +226,24 @@ function createRenderer(options) {
       if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
         unmountChildren(c1, el);
       }
+      if (c1 !== c2) {
+        hostSetElementText(el, c2);
+      }
+    } else {
+      if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
+        if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+          patchKeyChildren(c1, c2, el);
+        } else {
+          unmountChildren(c1, el);
+        }
+      } else {
+        if (prevShapeFlag & 8 /* TEXT_CHILDREN */) {
+          hostSetElementText(el, "");
+        }
+        if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+          mountChildren(c2, el);
+        }
+      }
     }
   };
   const patchElement = (n1, n2) => {
@@ -231,6 +251,7 @@ function createRenderer(options) {
     const oldProps = n1.props || {};
     const newProps = n2.props || {};
     patchProps(oldProps, newProps, el);
+    patchChildren(n1, n2, el);
   };
   const processElement = (n1, n2, container) => {
     if (n1 == null) {
