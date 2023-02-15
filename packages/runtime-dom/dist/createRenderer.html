@@ -15,15 +15,33 @@
         import { h, render } from './runtime-dom.esm.js'
         // 渲染
         // render(h('div', {style: {color: "red", background: 'bule'}}, h('span', 'hello')), app)
-        render(h('div', h('span', 'hello')), app)
+        render(h('div', [
+            h('li', { key: 'a' }, 'a'),
+            h('li', { key: 'b' }, 'b'),
+            h('li', { key: 'c' }, 'c'),
+            h('li', { key: 'd' }, 'd'),
+            h('li', { key: 'e' }, 'e'),
+            h('li', { key: 'f' }, 'f'),
+            h('li', { key: 'g' }, 'g')
+        ]), app)
 
         // 卸载
         setTimeout(() => {
             // render(null, app) // 卸载
             // render(h('p'), app)
             // render(h('div', {style: {color: "green", background: 'yellow'}}, h('span', 'hello')), app)
-            render(h('div', ''), app)
-        }, 1000)
+            // render(h('div', 'hellow'), app)
+            render(h('div', [
+                h('li', { key: 'a' }, 'a'),
+                h('li', { key: 'b' }, 'b'),
+                h('li', { key: 'e' }, 'e'),
+                h('li', { key: 'c' }, 'c'),
+                h('li', { key: 'd' }, 'd'),
+                h('li', { key: 'h' }, 'h'),
+                h('li', { key: 'f' }, 'f'),
+                h('li', { key: 'g' }, 'g'),
+            ]), app)
+        }, 2000)
 
         // console.log(h('div', {color: 'red'}, h('span', 'hello')), 'h')
         // console.log(createRenderer)

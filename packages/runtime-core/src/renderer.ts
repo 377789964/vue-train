@@ -27,7 +27,7 @@ export function createRenderer(options) {
         }
     }
 
-    const mountElemet = (vnode, container) => {
+    const mountElement = (vnode, container, anchor) => {
         const {type, props, children, shapeFlag} = vnode
         // 创建元素 虚拟节点上保存真实节点
         const el = (vnode.el = hostCreateElement(type))
@@ -43,7 +43,7 @@ export function createRenderer(options) {
         }else if(shapeFlag & ShapeFlags.TEXT_CHILDREN) {
             hostSetElementText(el, children)
         }
-        hostInsert(el, container)
+        hostInsert(el, container, anchor)
     }
 
     const patchProps = (oldProps, newProps, el) => {
@@ -64,8 +64,100 @@ export function createRenderer(options) {
         }
     }
 
+    // 全量diff算法，数组与数组比较 尽量复用减少dom操作
     const patchKeyChildren = (c1, c2, el) => {
+        console.log(c1, c2, 'c1-c2')
+        // 全量比对，深度比对消耗性能，先遍历父亲再遍历孩子
+        // 目前没有优化比对，没有关心，只比对变化的部分
+        // 同级比对，父和父 子和子 孙子和孙子 深度遍历
 
+        // a b c
+        // a b e d
+        let i = 0
+        let e1 = c1.length - 1
+        let e2 = c2.length - 1
+        // 并且是一方不成功就false 从前往后比
+        while(i<= e1 && i<=e2) {
+            const n1 = c1[i]
+            const n2 = c2[i]
+            if(isSameVNode(n1, n2)) {
+                patch(n1, n2, el) // 深度遍历
+            } else {
+                break
+            }
+            i++
+        }
+        // i = 2, e1 = 2, e2 = 3
+        //  从后往前比
+        while(i<= e1 && i<=e2) {
+            const n1 = c1[e1]
+            const n2 = c2[e2]
+            if(isSameVNode(n1, n2)) {
+                patch(n1, n2, el) // 深度遍历
+            } else {
+                break
+            }
+            e1--
+            e2--
+        }
+        // i = 2, e1 = 1, e2 = 2
+        // 我要知道是添加还是删除， i比e1大说明新的长老的短
+        // 同序列挂载
+        if(i > e1) { // 新增
+            if(i <= e2) {
+                while(i<=e2) {
+                    // 判断e2往前移动，那么e2的下一个值存在，意味着是向前插入
+                    // 如果e2没动 那么e2下一个值就是空 意味着向后插入
+                    const nextpos = e2 + 1
+                    // vue2是看下一个元素存在不存在
+                    // vue3是看下一个元素长度是否越界
+                    // anchor是下一个节点的虚拟dom
+                    const anchor = nextpos < c2.length ? c2[nextpos].el : null
+                    console.log(anchor, 'anchor')
+                    patch(null, c2[i], el, anchor) // 没有判断 向前还是向后插入
+                    i++
+                }
+            }
+        }
+        // a b c d
+        // a b        i = 2, e1 = 3, e2 = 1
+        // d c b a
+        //     b a    i = 0, e1 = 1, e2 = -1
+        // 同序列卸载 
+        // 老的多新的少
+        else if(i > e2) {
+            while(i<=e1) {
+                unmount(c1[i])
+                i++
+            }
+        }
+        // a b c d e   f g
+        // a b e c d h f g     i = 2, e1 = 4, e2 = 5
+        // c d e
+        // e c d h             
+        let s1 = i // s1 -> e1
+        let s2 = i // s2 -> e2
+        // 这里复用老节点 key vue2 中根据老节点创建的索引表 vue3 中根据新的key 做了一个映射表
+        const keyToNewIndexMap = new Map()
+        for(let i = s2; i<=e2; i++) {
+            const vnode = c2[i]
+            keyToNewIndexMap.set(vnode.key, i)
+        }
+        console.log(keyToNewIndexMap,'keyToNewIndexMap')
+        // 有了新的映射表后，去老的映射表中查找一下，看一下是否存在，如果存在需要复用了
+        for(let i = s1; i<=e1; i++) {
+            const child = c1[i]
+            const newIndex = keyToNewIndexMap.get(child.key) // 通过老的key来查找对应的心的索引
+            // 如果没有newIndex有值说明有
+            if(newIndex === undefined) {
+                unmount(child)
+            } else {
+                // 对比两个属性
+                // 如果前后两个能复用的，则比较这两个节点
+                patch(child, c2[newIndex], el)
+            }
+        }
+        // 写到这里，我们已经复用了节点，更新了复用节点的属性，差移动操作，和新的里面有老的中没有的操作
     }
 
     const patchChildren = (n1, n2, el) => {
@@ -109,24 +201,24 @@ export function createRenderer(options) {
     }
 
     const patchElement = (n1, n2) => { // 比对n1n2的属性差异
-        let el = n2.el = n1.el // 复用元素
+        let el = (n2.el = n1.el) // 复用元素
         const oldProps = n1.props || {}
         const newProps = n2.props || {}
         patchProps(oldProps, newProps, el)
         patchChildren(n1, n2, el)
     }
 
-    const processElement = (n1, n2, container) => {
+    const processElement = (n1, n2, container, anchor) => {
         if(n1 == null) {
             // 初次渲染
-            mountElemet(n2, container)
+            mountElement(n2, container, anchor)
         } else {
             // diff算法
             patchElement(n1, n2)
         }
     }
 
-    const patch = (n1, n2, container) => {
+    const patch = (n1, n2, container, anchor = null) => {
         // console.log(n1, n2, 'n1-n2')
         if(n1 == n2) {
             return // 无需更新
@@ -136,7 +228,7 @@ export function createRenderer(options) {
             unmount(n1); // 删除节点
             n1 = null
         }
-        processElement(n1, n2, container)
+        processElement(n1, n2, container, anchor)
     }
 
     const unmount = (vnode) => hostRemove(vnode.el)
