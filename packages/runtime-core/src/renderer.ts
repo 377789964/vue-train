@@ -66,7 +66,7 @@ export function createRenderer(options) {
 
     // 全量diff算法，数组与数组比较 尽量复用减少dom操作
     const patchKeyChildren = (c1, c2, el) => {
-        console.log(c1, c2, 'c1-c2')
+        // console.log(c1, c2, 'c1-c2')
         // 全量比对，深度比对消耗性能，先遍历父亲再遍历孩子
         // 目前没有优化比对，没有关心，只比对变化的部分
         // 同级比对，父和父 子和子 孙子和孙子 深度遍历
@@ -143,8 +143,10 @@ export function createRenderer(options) {
             const vnode = c2[i]
             keyToNewIndexMap.set(vnode.key, i)
         }
-        console.log(keyToNewIndexMap,'keyToNewIndexMap')
+        // console.log(keyToNewIndexMap,'keyToNewIndexMap')
         // 有了新的映射表后，去老的映射表中查找一下，看一下是否存在，如果存在需要复用了
+        const toBePatched = e2 - s2 + 1
+        const newIndexToOldMapIndex = new Array(toBePatched).fill(0)
         for(let i = s1; i<=e1; i++) {
             const child = c1[i]
             const newIndex = keyToNewIndexMap.get(child.key) // 通过老的key来查找对应的心的索引
@@ -154,10 +156,33 @@ export function createRenderer(options) {
             } else {
                 // 对比两个属性
                 // 如果前后两个能复用的，则比较这两个节点
+                newIndexToOldMapIndex[newIndex - s2] = i + 1
                 patch(child, c2[newIndex], el)
             }
         }
         // 写到这里，我们已经复用了节点，更新了复用节点的属性，差移动操作，和新的里面有老的中没有的操作
+        // 如何知道 新的里面有 老的里面没有
+        // console.log(newIndexToOldMapIndex, 'newIndexToOldMapIndex') // 对应的位置就是老索引+1
+        for(let i = toBePatched - 1; i>=0; i--) {
+            const nextIndex = s2 + i // 下一个元素的索引
+            const nextChild = c2[nextIndex] // 先拿到h
+            // 看一下h后面是否有值 有值就将h插入到这个元素的前面，没有值就是appendChild
+            const anchor = nextIndex + 1 < c2.length ? (c2[nextIndex + 1]).el : null
+            // 默认找到f 把 h 插入到f的前面
+            if(newIndexToOldMapIndex[i] == 0) {
+                // 需要创建元素再插入
+                patch(null, nextChild, el, anchor) // 将h插入到了f前面
+            }else {
+                // 直接插入操作
+                // 倒序插入
+                hostInsert(nextChild.el, el, anchor)
+                // 这个插入比较暴力，整个做一次移动，但是我们不需要优化不动的那一项
+                // 【5， 3， 4， 0】
+                // 索引1和2的不用动
+                
+            }
+            
+        }
     }
 
     const patchChildren = (n1, n2, el) => {

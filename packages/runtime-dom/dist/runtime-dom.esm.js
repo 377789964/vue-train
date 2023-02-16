@@ -216,7 +216,6 @@ function createRenderer(options) {
     }
   };
   const patchKeyChildren = (c1, c2, el) => {
-    console.log(c1, c2, "c1-c2");
     let i = 0;
     let e1 = c1.length - 1;
     let e2 = c2.length - 1;
@@ -264,14 +263,26 @@ function createRenderer(options) {
       const vnode = c2[i2];
       keyToNewIndexMap.set(vnode.key, i2);
     }
-    console.log(keyToNewIndexMap, "keyToNewIndexMap");
+    const toBePatched = e2 - s2 + 1;
+    const newIndexToOldMapIndex = new Array(toBePatched).fill(0);
     for (let i2 = s1; i2 <= e1; i2++) {
       const child = c1[i2];
       const newIndex = keyToNewIndexMap.get(child.key);
       if (newIndex === void 0) {
         unmount(child);
       } else {
+        newIndexToOldMapIndex[newIndex - s2] = i2 + 1;
         patch(child, c2[newIndex], el);
+      }
+    }
+    for (let i2 = toBePatched - 1; i2 >= 0; i2--) {
+      const nextIndex = s2 + i2;
+      const nextChild = c2[nextIndex];
+      const anchor = nextIndex + 1 < c2.length ? c2[nextIndex + 1].el : null;
+      if (newIndexToOldMapIndex[i2] == 0) {
+        patch(null, nextChild, el, anchor);
+      } else {
+        hostInsert(nextChild.el, el, anchor);
       }
     }
   };
