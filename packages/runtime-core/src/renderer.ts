@@ -163,6 +163,13 @@ export function createRenderer(options) {
         // 写到这里，我们已经复用了节点，更新了复用节点的属性，差移动操作，和新的里面有老的中没有的操作
         // 如何知道 新的里面有 老的里面没有
         // console.log(newIndexToOldMapIndex, 'newIndexToOldMapIndex') // 对应的位置就是老索引+1
+
+        // [5, 3, 4, 0]
+        // [0, 1, 2, 3]
+        // [1, 2]
+        const seq = getSequence(newIndexToOldMapIndex)
+
+        let j = seq.length - 1 // 获取seq最后的索引
         for(let i = toBePatched - 1; i>=0; i--) {
             const nextIndex = s2 + i // 下一个元素的索引
             const nextChild = c2[nextIndex] // 先拿到h
@@ -173,13 +180,17 @@ export function createRenderer(options) {
                 // 需要创建元素再插入
                 patch(null, nextChild, el, anchor) // 将h插入到了f前面
             }else {
-                // 直接插入操作
-                // 倒序插入
-                hostInsert(nextChild.el, el, anchor)
-                // 这个插入比较暴力，整个做一次移动，但是我们不需要优化不动的那一项
-                // 【5， 3， 4， 0】
-                // 索引1和2的不用动
-                
+                // 在最长递增子序列中不用动,不在则需要移动
+                if(i !== seq[j]) {
+                    // 直接插入操作
+                    // 倒序插入
+                    hostInsert(nextChild.el, el, anchor)
+                    // 这个插入比较暴力，整个做一次移动，但是我们不需要优化不动的那一项
+                    // 【5， 3， 4， 0】
+                    // 索引1和2的不用动
+                } else {
+                    j--
+                }
             }
             
         }
@@ -277,4 +288,50 @@ export function createRenderer(options) {
         // createrRenderer 返回的render方法 接受参数是虚拟节点和容器
         render
     }
+}
+
+function getSequence(arr) {
+    let len = arr.length; // 总长度
+    let result = [0]; // 默认连续的最终结果 组成的索引 
+    let resultLastIndex;
+    let start;
+    let end;
+    let middle;
+    let p = arr.slice(0); // 用来标识索引的
+    for (let i = 0; i < len; i++) {
+        const arrI = arr[i]
+        // vue中如果序列中出现0 忽略就可以， vue中序列不会出现0
+        if(arrI !== 0) {
+            resultLastIndex = result[result.length - 1]
+            if(arr[resultLastIndex] < arrI) {
+                result.push(i)
+                p[i]  = resultLastIndex // 让当前最后一项记住前一项的索引
+                continue
+            }
+            // 这里会出现 当前项比最后一项的值大
+            start = 0;
+            end = result.length - 1
+            while(start < end) {
+                middle = (start + end) / 2 | 0
+                if(arr[result[middle]] < arrI) {
+                    start = middle + 1
+                } else {
+                    end = middle
+                }
+            }
+            // middle 就是第一个比当前值大的值
+            if (arrI < arr[result[start]]) {
+                p[i] = result[start - 1] // 记住换的那个人的前一项的索引
+                result[start] = i
+            }
+        }
+    }
+    // 追溯
+    let i = result.length // 获取数组长度
+    let last = result[i - 1] // 最后一项的索引
+    while (i-- > 0) { 
+        result[i] = last // 用最后一项索引的来追溯源
+        last = p[last] // 用p中的索引来进行追溯
+    }
+    return result
 }
