@@ -112,6 +112,8 @@ function isString(value) {
 }
 
 // packages/runtime-core/src/vnode.ts
+var Text = Symbol("text");
+var Fragment = Symbol("fragment");
 function isVnode(vnode) {
   return vnode.__v_isVnode == true;
 }
@@ -182,7 +184,7 @@ function createRenderer(options) {
       patch(null, children[i], el);
     }
   };
-  const unmountChildren = (children, el) => {
+  const unmountChildren = (children) => {
     for (let i = 0; i < children.length; i++) {
       unmount(children[i]);
     }
@@ -259,39 +261,40 @@ function createRenderer(options) {
         unmount(c1[i]);
         i++;
       }
-    }
-    let s1 = i;
-    let s2 = i;
-    const keyToNewIndexMap = /* @__PURE__ */ new Map();
-    for (let i2 = s2; i2 <= e2; i2++) {
-      const vnode = c2[i2];
-      keyToNewIndexMap.set(vnode.key, i2);
-    }
-    const toBePatched = e2 - s2 + 1;
-    const newIndexToOldMapIndex = new Array(toBePatched).fill(0);
-    for (let i2 = s1; i2 <= e1; i2++) {
-      const child = c1[i2];
-      const newIndex = keyToNewIndexMap.get(child.key);
-      if (newIndex === void 0) {
-        unmount(child);
-      } else {
-        newIndexToOldMapIndex[newIndex - s2] = i2 + 1;
-        patch(child, c2[newIndex], el);
+    } else {
+      let s1 = i;
+      let s2 = i;
+      const keyToNewIndexMap = /* @__PURE__ */ new Map();
+      for (let i2 = s2; i2 <= e2; i2++) {
+        const vnode = c2[i2];
+        keyToNewIndexMap.set(vnode.key, i2);
       }
-    }
-    const seq = getSequence(newIndexToOldMapIndex);
-    let j = seq.length - 1;
-    for (let i2 = toBePatched - 1; i2 >= 0; i2--) {
-      const nextIndex = s2 + i2;
-      const nextChild = c2[nextIndex];
-      const anchor = nextIndex + 1 < c2.length ? c2[nextIndex + 1].el : null;
-      if (newIndexToOldMapIndex[i2] == 0) {
-        patch(null, nextChild, el, anchor);
-      } else {
-        if (i2 !== seq[j]) {
-          hostInsert(nextChild.el, el, anchor);
+      const toBePatched = e2 - s2 + 1;
+      const newIndexToOldMapIndex = new Array(toBePatched).fill(0);
+      for (let i2 = s1; i2 <= e1; i2++) {
+        const child = c1[i2];
+        const newIndex = keyToNewIndexMap.get(child.key);
+        if (newIndex === void 0) {
+          unmount(child);
         } else {
-          j--;
+          newIndexToOldMapIndex[newIndex - s2] = i2 + 1;
+          patch(child, c2[newIndex], el);
+        }
+      }
+      const seq = getSequence(newIndexToOldMapIndex);
+      let j = seq.length - 1;
+      for (let i2 = toBePatched - 1; i2 >= 0; i2--) {
+        const nextIndex = s2 + i2;
+        const nextChild = c2[nextIndex];
+        const anchor = nextIndex + 1 < c2.length ? c2[nextIndex + 1].el : null;
+        if (newIndexToOldMapIndex[i2] == 0) {
+          patch(null, nextChild, el, anchor);
+        } else {
+          if (i2 !== seq[j]) {
+            hostInsert(nextChild.el, el, anchor);
+          } else {
+            j--;
+          }
         }
       }
     }
@@ -303,7 +306,7 @@ function createRenderer(options) {
     const shapeFlag = n2.shapeFlag;
     if (shapeFlag & 8 /* TEXT_CHILDREN */) {
       if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
-        unmountChildren(c1, el);
+        unmountChildren(c1);
       }
       if (c1 !== c2) {
         hostSetElementText(el, c2);
@@ -313,7 +316,7 @@ function createRenderer(options) {
         if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
           patchKeyChildren(c1, c2, el);
         } else {
-          unmountChildren(c1, el);
+          unmountChildren(c1);
         }
       } else {
         if (prevShapeFlag & 8 /* TEXT_CHILDREN */) {
@@ -339,6 +342,23 @@ function createRenderer(options) {
       patchElement(n1, n2);
     }
   };
+  const processText = (n1, n2, el) => {
+    if (n1 == null) {
+      hostInsert(n2.el = hostCreateText(n2.children), el);
+    } else {
+      let el2 = n2.el = n1.el;
+      if (n1.children != n2.children) {
+        hostSetText(el2, n2.children);
+      }
+    }
+  };
+  const processFragment = (n1, n2, el) => {
+    if (n1 == null) {
+      mountChildren(n2.children, el);
+    } else {
+      patchKeyChildren(n1.children, n2.children, el);
+    }
+  };
   const patch = (n1, n2, container, anchor = null) => {
     if (n1 == n2) {
       return;
@@ -347,9 +367,26 @@ function createRenderer(options) {
       unmount(n1);
       n1 = null;
     }
-    processElement(n1, n2, container, anchor);
+    let { shapeFlag, type } = n2;
+    switch (type) {
+      case Text:
+        processText(n1, n2, container);
+        break;
+      case Fragment:
+        processFragment(n1, n2, container);
+        break;
+      default:
+        if (shapeFlag & 1 /* ELEMENT */) {
+          processElement(n1, n2, container, anchor);
+        }
+    }
   };
-  const unmount = (vnode) => hostRemove(vnode.el);
+  const unmount = (vnode) => {
+    if (vnode.type === Fragment) {
+      return unmountChildren(vnode.children);
+    }
+    hostRemove(vnode.el);
+  };
   const render2 = (vnode, container) => {
     if (vnode == null) {
       if (container._vnode) {
@@ -412,6 +449,8 @@ var render = (vnode, container) => {
   return createRenderer(renderOptions).render(vnode, container);
 };
 export {
+  Fragment,
+  Text,
   createRenderer,
   createVNode,
   h,

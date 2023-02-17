@@ -1,5 +1,5 @@
 import { ShapeFlags } from "@vue/shared"
-import { isSameVNode } from "./vnode"
+import { isSameVNode, Text, Fragment } from "./vnode"
 
 export function createRenderer(options) {
     const {
@@ -21,7 +21,7 @@ export function createRenderer(options) {
         }
     }
 
-    const  unmountChildren = (children, el) => {
+    const  unmountChildren = (children) => {
         for(let i = 0; i < children.length; i++) {
             unmount(children[i])
         }
@@ -130,70 +130,71 @@ export function createRenderer(options) {
                 unmount(c1[i])
                 i++
             }
-        }
-        // a b c d e   f g
-        // a b e c d h f g     i = 2, e1 = 4, e2 = 5
-        // c d e
-        // e c d h             
-        let s1 = i // s1 -> e1
-        let s2 = i // s2 -> e2
-        // 这里复用老节点 key vue2 中根据老节点创建的索引表 vue3 中根据新的key 做了一个映射表
-        const keyToNewIndexMap = new Map()
-        for(let i = s2; i<=e2; i++) {
-            const vnode = c2[i]
-            keyToNewIndexMap.set(vnode.key, i)
-        }
-        // console.log(keyToNewIndexMap,'keyToNewIndexMap')
-        // 有了新的映射表后，去老的映射表中查找一下，看一下是否存在，如果存在需要复用了
-        const toBePatched = e2 - s2 + 1
-        const newIndexToOldMapIndex = new Array(toBePatched).fill(0)
-        for(let i = s1; i<=e1; i++) {
-            const child = c1[i]
-            const newIndex = keyToNewIndexMap.get(child.key) // 通过老的key来查找对应的心的索引
-            // 如果没有newIndex有值说明有
-            if(newIndex === undefined) {
-                unmount(child)
-            } else {
-                // 对比两个属性
-                // 如果前后两个能复用的，则比较这两个节点
-                newIndexToOldMapIndex[newIndex - s2] = i + 1
-                patch(child, c2[newIndex], el)
+        } else {
+            // a b c d e   f g
+            // a b e c d h f g     i = 2, e1 = 4, e2 = 5
+            // c d e
+            // e c d h             
+            let s1 = i // s1 -> e1
+            let s2 = i // s2 -> e2
+            // 这里复用老节点 key vue2 中根据老节点创建的索引表 vue3 中根据新的key 做了一个映射表
+            const keyToNewIndexMap = new Map()
+            for(let i = s2; i<=e2; i++) {
+                const vnode = c2[i]
+                keyToNewIndexMap.set(vnode.key, i)
             }
-        }
-        // 写到这里，我们已经复用了节点，更新了复用节点的属性，差移动操作，和新的里面有老的中没有的操作
-        // 如何知道 新的里面有 老的里面没有
-        // console.log(newIndexToOldMapIndex, 'newIndexToOldMapIndex') // 对应的位置就是老索引+1
-
-        // [5, 3, 4, 0]
-        // [0, 1, 2, 3]
-        // [1, 2]
-        const seq = getSequence(newIndexToOldMapIndex)
-
-        let j = seq.length - 1 // 获取seq最后的索引
-        for(let i = toBePatched - 1; i>=0; i--) {
-            const nextIndex = s2 + i // 下一个元素的索引
-            const nextChild = c2[nextIndex] // 先拿到h
-            // 看一下h后面是否有值 有值就将h插入到这个元素的前面，没有值就是appendChild
-            const anchor = nextIndex + 1 < c2.length ? (c2[nextIndex + 1]).el : null
-            // 默认找到f 把 h 插入到f的前面
-            if(newIndexToOldMapIndex[i] == 0) {
-                // 需要创建元素再插入
-                patch(null, nextChild, el, anchor) // 将h插入到了f前面
-            }else {
-                // 在最长递增子序列中不用动,不在则需要移动
-                if(i !== seq[j]) {
-                    // 直接插入操作
-                    // 倒序插入
-                    hostInsert(nextChild.el, el, anchor)
-                    // 这个插入比较暴力，整个做一次移动，但是我们不需要优化不动的那一项
-                    // 【5， 3， 4， 0】
-                    // 索引1和2的不用动
+            // console.log(keyToNewIndexMap,'keyToNewIndexMap')
+            // 有了新的映射表后，去老的映射表中查找一下，看一下是否存在，如果存在需要复用了
+            const toBePatched = e2 - s2 + 1
+            const newIndexToOldMapIndex = new Array(toBePatched).fill(0)
+            for(let i = s1; i<=e1; i++) {
+                const child = c1[i]
+                const newIndex = keyToNewIndexMap.get(child.key) // 通过老的key来查找对应的心的索引
+                // 如果没有newIndex有值说明有
+                if(newIndex === undefined) {
+                    unmount(child)
                 } else {
-                    j--
+                    // 对比两个属性
+                    // 如果前后两个能复用的，则比较这两个节点
+                    newIndexToOldMapIndex[newIndex - s2] = i + 1
+                    patch(child, c2[newIndex], el)
                 }
             }
-            
+            // 写到这里，我们已经复用了节点，更新了复用节点的属性，差移动操作，和新的里面有老的中没有的操作
+            // 如何知道 新的里面有 老的里面没有
+            // console.log(newIndexToOldMapIndex, 'newIndexToOldMapIndex') // 对应的位置就是老索引+1
+
+            // [5, 3, 4, 0]
+            // [0, 1, 2, 3]
+            // [1, 2]
+            const seq = getSequence(newIndexToOldMapIndex)
+
+            let j = seq.length - 1 // 获取seq最后的索引
+            for(let i = toBePatched - 1; i>=0; i--) {
+                const nextIndex = s2 + i // 下一个元素的索引
+                const nextChild = c2[nextIndex] // 先拿到h
+                // 看一下h后面是否有值 有值就将h插入到这个元素的前面，没有值就是appendChild
+                const anchor = nextIndex + 1 < c2.length ? (c2[nextIndex + 1]).el : null
+                // 默认找到f 把 h 插入到f的前面
+                if(newIndexToOldMapIndex[i] == 0) {
+                    // 需要创建元素再插入
+                    patch(null, nextChild, el, anchor) // 将h插入到了f前面
+                }else {
+                    // 在最长递增子序列中不用动,不在则需要移动
+                    if(i !== seq[j]) {
+                        // 直接插入操作
+                        // 倒序插入
+                        hostInsert(nextChild.el, el, anchor)
+                        // 这个插入比较暴力，整个做一次移动，但是我们不需要优化不动的那一项
+                        // 【5， 3， 4， 0】
+                        // 索引1和2的不用动
+                    } else {
+                        j--
+                    }
+                }
+            }
         }
+        
     }
 
     const patchChildren = (n1, n2, el) => {
@@ -207,7 +208,7 @@ export function createRenderer(options) {
         if(shapeFlag & ShapeFlags.TEXT_CHILDREN) {
             // 老的是数组
             if(prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-                unmountChildren(c1, el)
+                unmountChildren(c1)
             }
             if(c1 !== c2) {
                 // 文本内容不相同
@@ -221,7 +222,7 @@ export function createRenderer(options) {
                     patchKeyChildren(c1, c2, el)
                 }else {
                     // 组新的不是数组
-                    unmountChildren(c1, el)
+                    unmountChildren(c1)
                 }
             } else {
                 // 老的是文本
@@ -254,20 +255,62 @@ export function createRenderer(options) {
         }
     }
 
+    const processText = (n1, n2, el) => {
+        if(n1 == null) {
+            hostInsert((n2.el = hostCreateText(n2.children)),el )
+        } else {
+            let el = (n2.el = n1.el)
+            if(n1.children != n2.children) {
+                hostSetText(el, n2.children)
+            }
+        }
+    }
+
+    const processFragment = (n1, n2, el) => {
+        if(n1 == null) {
+            mountChildren(n2.children, el)
+        } else {
+            patchKeyChildren(n1.children, n2.children, el)
+        }
+    }
+
+    // 每次增加类型需要考虑 初始化 更新 销毁
     const patch = (n1, n2, container, anchor = null) => {
         // console.log(n1, n2, 'n1-n2')
         if(n1 == n2) {
             return // 无需更新
         }
+
         // n1 div => n2 p n1n2都有值，但是类型不同删除n1 换n2
         if(n1 && !isSameVNode(n1, n2)) {
             unmount(n1); // 删除节点
             n1 = null
         }
-        processElement(n1, n2, container, anchor)
+
+        // n2新节点
+        let { shapeFlag, type } = n2
+        switch(type){
+            case Text:
+                // 处理文本
+                processText(n1, n2, container)
+                break;
+            case Fragment:
+                // 处理碎片（多个div）
+                processFragment(n1, n2, container)
+                break;
+            default:
+                if(shapeFlag & ShapeFlags.ELEMENT) {
+                    processElement(n1, n2, container, anchor)
+                }
+        }
     }
 
-    const unmount = (vnode) => hostRemove(vnode.el)
+    const unmount = (vnode) => {
+        if(vnode.type === Fragment) {
+            return unmountChildren(vnode.children)
+        }
+        hostRemove(vnode.el)
+    }
 
     const render = (vnode, container) => {
         // console.log(container, 'container')

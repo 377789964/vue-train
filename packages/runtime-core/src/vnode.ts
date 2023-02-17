@@ -2,6 +2,9 @@
 
 import { isString, ShapeFlags } from "@vue/shared";
 
+export const Text = Symbol('text')
+export const Fragment = Symbol('fragment')
+
 export function isVnode(vnode){
     return vnode.__v_isVnode == true
 }
