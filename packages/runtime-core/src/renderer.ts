@@ -1,5 +1,7 @@
+import { reactive, ReactiveEffect } from "@vue/reactivity"
 import { ShapeFlags } from "@vue/shared"
-import { isSameVNode, Text, Fragment } from "./vnode"
+import { isSameVNode, Text, Fragment, isVnode } from "./vnode"
+import { queueJob } from "./scheduler"
 
 export function createRenderer(options) {
     const {
@@ -274,6 +276,52 @@ export function createRenderer(options) {
         }
     }
 
+    const mountComponent = (vnode, container, anchor) => {
+        // 如何挂载组件
+        // vnode 指代的是组件的虚拟节点 subTree render函数返回的是虚拟节点
+        const { data = () => ({}), render } = vnode.type
+        const state = reactive(data()) // 将数据变成响应式
+        const instance = { // 组件实例
+            state,
+            isMounted: false,
+            subTree: null,
+            vnode,
+            update: null // 组件的更新方法 effect.run()
+        }
+        const componentFn = () => {
+            // 稍后组件更新也是执行这个方法
+            // 这里会做依赖手机，数据变化回再次调用effect
+            if (!instance.isMounted) {
+                // 第一次挂载组件
+                const subTree = render.call(state)
+                patch(null, subTree, container, anchor)
+                instance.isMounted = true
+                instance.subTree = subTree
+            } else {
+                // 更新组件
+                const subTree = render.call(state)
+                patch(instance.subTree, subTree, container, anchor)
+                instance.subTree = subTree
+            }
+        }
+        const effect = new ReactiveEffect(componentFn, ()=>{
+            // 需要做异步更新
+            console.log(instance.update, 'instance.update')
+            queueJob(instance.update)
+        })
+        const update = (instance.update = effect.run.bind(effect))
+        update() // 强制更新
+    }
+
+    const processComponent = (n1, n2, container, anchor = null) => {
+        if(n1 == null) {
+            // 初次渲染
+            mountComponent(n2, container, anchor)
+        } else {
+            // 组件更新 指代的组件的属性 更新 插槽更新
+        }
+    }
+
     // 每次增加类型需要考虑 初始化 更新 销毁
     const patch = (n1, n2, container, anchor = null) => {
         // console.log(n1, n2, 'n1-n2')
@@ -301,6 +349,8 @@ export function createRenderer(options) {
             default:
                 if(shapeFlag & ShapeFlags.ELEMENT) {
                     processElement(n1, n2, container, anchor)
+                } else if(shapeFlag & ShapeFlags.COMPONENT){
+                    processComponent(n1, n2, container)
                 }
         }
     }

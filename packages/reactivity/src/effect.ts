@@ -17,7 +17,7 @@ export class ReactiveEffect {
     public active = true;
     public deps = [];
     public parent = undefined
-    constructor(public fn, private scheduler) {
+    constructor(public fn, private scheduler?) {
         recordEffectScope(this)
     }
     run() {

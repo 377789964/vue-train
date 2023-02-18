@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module">
+        import { createRenderer, h, render, Text, Fragment, getCurrentInstance} from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+        // import './runtime-dom.esm.js'
+
+        // import { h, render, Text, Fragment, getCurrentInstance } from './runtime-dom.esm.js'
+
+        let a = 100
+        const VueComponent = {
+            data() {
+                return {
+                    age: 30,
+                    name: 'jw'
+                }
+            },
+            setup() {
+                // let instance = getCurrentInstance()
+                // setTimeout(() => {
+                //     a = 200
+                //     console.log(instance, 'instance')
+                // })
+            },
+            render() {
+                // render中不能修改数据
+                // setTimeout(() => {
+                //     this.age++
+                //     this.age++
+                // }, 2000)
+                return h('div', [h(Text, a), h(Text, this.name), h(Text, this.age)])
+            }
+        }
+
+        render(h(VueComponent), app)
+        // 我们每创建一个组件 都要有一个独立的数据源 如果是对象会导致组件共享数据
+
+
+  
+    </script>
+    
+</body>
+</html>
