@@ -107,6 +107,9 @@ var patchProp = (el, key, prevValue, nextValue) => {
 function isObject(value) {
   return value !== null && typeof value == "object";
 }
+function isFunction(value) {
+  return typeof value === "function";
+}
 function isString(value) {
   return typeof value === "string";
 }
@@ -341,6 +344,62 @@ function initProps(instance, rawProps) {
   instance.attrs = attrs;
 }
 
+// packages/runtime-core/src/component.ts
+function createComponentInstance(vnode) {
+  const instance = {
+    data: null,
+    isMounted: false,
+    subTree: null,
+    vnode,
+    update: null,
+    props: {},
+    attrs: {},
+    propsOptions: vnode.type.props || {},
+    proxy: null
+  };
+  return instance;
+}
+var publicProperties = {
+  $attrs: (i) => i.attrs,
+  $props: (i) => i.props
+};
+var PublicInstancePropxyHandler = {
+  get(target, key) {
+    let { data, props } = target;
+    if (data && hasOwn(key, data)) {
+      return data[key];
+    } else if (props && hasOwn(key, props)) {
+      return props[key];
+    }
+    let getter = publicProperties[key];
+    if (getter) {
+      return getter(target);
+    }
+  },
+  set(target, key, value) {
+    let { data, props } = target;
+    if (data && hasOwn(key, data)) {
+      data[key] = value;
+    } else if (props && hasOwn(key, props)) {
+      console.log("props\u4E0D\u80FD\u4FEE\u6539");
+      return false;
+    }
+    return true;
+  }
+};
+function setupComponent(instance) {
+  const { type, props } = instance.vnode;
+  initProps(instance, props);
+  instance.proxy = new Proxy(instance, PublicInstancePropxyHandler);
+  let data = type.data;
+  if (data) {
+    if (isFunction(data)) {
+      instance.data = reactive(data.call(instance.proxy));
+    }
+  }
+  instance.render = type.render;
+}
+
 // packages/runtime-core/src/renderer.ts
 function createRenderer(options) {
   const {
@@ -536,49 +595,12 @@ function createRenderer(options) {
     }
   };
   const mountComponent = (vnode, container, anchor) => {
-    const { data = () => ({}), render: render3, props: propsOptions = {} } = vnode.type;
-    const state = reactive(data());
-    const instance = {
-      data: state,
-      isMounted: false,
-      subTree: null,
-      vnode,
-      update: null,
-      props: {},
-      attrs: {},
-      propsOptions,
-      proxy: null
-    };
-    vnode.component = instance;
-    initProps(instance, vnode.props);
-    const publicProperties = {
-      $attrs: (i) => i.attrs,
-      $props: (i) => i.props
-    };
-    instance.proxy = new Proxy(instance, {
-      get(target, key) {
-        let { data: data2, props } = target;
-        if (hasOwn(key, data2)) {
-          return data2[key];
-        } else if (hasOwn(key, props)) {
-          return props[key];
-        }
-        let getter = publicProperties[key];
-        if (getter) {
-          return getter(target);
-        }
-      },
-      set(target, key, value) {
-        let { data: data2, props } = target;
-        if (hasOwn(key, data2)) {
-          data2[key] = value;
-        } else if (hasOwn(key, props)) {
-          console.log("props\u4E0D\u80FD\u4FEE\u6539");
-          return false;
-        }
-        return true;
-      }
-    });
+    const instance = vnode.component = createComponentInstance(vnode);
+    setupComponent(instance);
+    setupRenderEffect(instance, container, anchor);
+  };
+  const setupRenderEffect = (instance, container, anchor) => {
+    const { render: render3 } = instance;
     const componentFn = () => {
       if (!instance.isMounted) {
         const subTree = render3.call(instance.proxy);

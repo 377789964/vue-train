@@ -1,8 +1,8 @@
 import { reactive, ReactiveEffect } from "@vue/reactivity"
-import { ShapeFlags, hasOwn } from "@vue/shared"
+import { ShapeFlags } from "@vue/shared"
 import { isSameVNode, Text, Fragment, isVnode } from "./vnode"
 import { queueJob } from "./scheduler"
-import { initProps } from './componentProps'
+import { createComponentInstance, setupComponent } from './component'
 
 export function createRenderer(options) {
     const {
@@ -278,52 +278,18 @@ export function createRenderer(options) {
     }
 
     const mountComponent = (vnode, container, anchor) => {
-        // 如何挂载组件
-        // vnode 指代的是组件的虚拟节点 subTree render函数返回的是虚拟节点
-        const { data = () => ({}), render, props: propsOptions = {} } = vnode.type
-        const state = reactive(data()) // 将数据变成响应式
-        const instance = { // 组件实例
-            data: state,
-            isMounted: false,
-            subTree: null,
-            vnode,
-            update: null, // 组件的更新方法 effect.run()
-            props: {},
-            attrs: {},
-            propsOptions,
-            proxy: null
-        }
-        vnode.component = instance // 让虚拟节点知道对应的组件是谁
-        // instance.propsOptions 用户接收了哪些属性的列表 vnode.props
-        initProps(instance, vnode.props)
-        const publicProperties = {
-            $attrs: (i) => i.attrs,
-            $props: (i) => i.props
-        }
-        instance.proxy = new Proxy(instance, {
-            get(target, key) {
-                let { data, props } = target
-                if(hasOwn(key, data)) {
-                    return data[key]
-                } else if(hasOwn(key, props)) {
-                    return props[key]
-                }
-                let getter = publicProperties[key]
-                if(getter) {
-                    return getter(target)
-                }
-            },
-            set(target, key, value) {
-                let { data, props } = target
-                if(hasOwn(key, data)) {
-                    data[key] = value
-                } else if(hasOwn(key, props)) {
-                    console.log('props不能修改')
-                    return false
-                }
-                return true
-            }
-        })
+        // 1. 创建实例
+        const instance = (vnode.component = createComponentInstance(vnode))
+        // 2. 实例赋值属性
+        setupComponent(instance)
+        // 3. 创建组件的effect
+        setupRenderEffect(instance, container, anchor)
+        
+    }
+
+    const setupRenderEffect = (instance, container, anchor) => {
+        const { render } = instance
+        // console.log(render, 'render')
         const componentFn = () => {
             // 稍后组件更新也是执行这个方法
             // 这里会做依赖手机，数据变化回再次调用effect
