@@ -1,6 +1,8 @@
 const queue = []
 let isFlushing = false
+
 const resolvePromise = Promise.resolve() // nextTick
+
 export const queueJob = (job) => {
     if(!queue.includes(job)) {
         queue.push(job)
@@ -13,6 +15,7 @@ export const queueJob = (job) => {
             isFlushing = false
             let copy = queue.slice(0)
             queue.length = 0
+            
             for(let i = 0; i < copy.length; i++) {
                 const job = copy[i]
                 job()

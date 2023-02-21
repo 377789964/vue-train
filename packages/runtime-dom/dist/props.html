@@ -14,41 +14,36 @@
 
         import { h, render, Text, Fragment } from './runtime-dom.esm.js'
 
-        let a = 100
-
         // attrs = 所有的属性 - propsOptions
         // props = propsOptions
         // props 用户接收的属性 attrs 用户没接收的属性
-        const VueComponent = {
+
+        const ChildComponent = {
             props: {
-                a: Number
+                a: String,
+                n: Object
             },
-            data() {
-                return {
-                    age: 30,
-                    name: 'jw'
-                }
-            },
-            // setup() {
-                // let instance = getCurrentInstance()
-                // setTimeout(() => {
-                //     a = 200
-                //     console.log(instance, 'instance')
-                // })
-            // },
             render() {
-                // render中不能修改数据
-                // setTimeout(() => {
-                //     this.age++
-                //     this.age++
-                // }, 2000)
-                // return h('div', [h(Text, a), h(Text, this.name), h(Text, this.age)])
-                console.log(this.$attrs, this.$props, 'this')
-                return h('div', [h(Text, this.name), h(Text, this.age)])
+                console.log(this, this.a,  'a-n', this.n, this.$props)
+                return h(Text, this.a) // 会把这个a变成可以收集依赖的
             }
         }
-
-        render(h(VueComponent, {a:1, b:2, c:3}), app)
+        const VueComponent = {
+            data() {
+                return { isShow: false }
+            },
+            render() {
+                return h(Fragment, [
+                    h('button', {
+                        onClick: () => {
+                            this.isShow = !this.isShow
+                        }
+                    }, '点我修改状态'),
+                    h(ChildComponent, {a: this.isShow ? '显示' : '隐藏', n: { n: 2 }})
+                ])
+            }
+        }
+        render(h(VueComponent), app)
         // 我们每创建一个组件 都要有一个独立的数据源 如果是对象会导致组件共享数据
 
 

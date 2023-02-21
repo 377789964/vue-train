@@ -1,7 +1,8 @@
 import { reactive, ReactiveEffect } from "@vue/reactivity"
-import { ShapeFlags } from "@vue/shared"
+import { ShapeFlags, hasOwn } from "@vue/shared"
 import { isSameVNode, Text, Fragment, isVnode } from "./vnode"
 import { queueJob } from "./scheduler"
+import { initProps } from './componentProps'
 
 export function createRenderer(options) {
     const {
@@ -279,34 +280,69 @@ export function createRenderer(options) {
     const mountComponent = (vnode, container, anchor) => {
         // 如何挂载组件
         // vnode 指代的是组件的虚拟节点 subTree render函数返回的是虚拟节点
-        const { data = () => ({}), render } = vnode.type
+        const { data = () => ({}), render, props: propsOptions = {} } = vnode.type
         const state = reactive(data()) // 将数据变成响应式
         const instance = { // 组件实例
-            state,
+            data: state,
             isMounted: false,
             subTree: null,
             vnode,
-            update: null // 组件的更新方法 effect.run()
+            update: null, // 组件的更新方法 effect.run()
+            props: {},
+            attrs: {},
+            propsOptions,
+            proxy: null
         }
+        vnode.component = instance // 让虚拟节点知道对应的组件是谁
+        // instance.propsOptions 用户接收了哪些属性的列表 vnode.props
+        initProps(instance, vnode.props)
+        const publicProperties = {
+            $attrs: (i) => i.attrs,
+            $props: (i) => i.props
+        }
+        instance.proxy = new Proxy(instance, {
+            get(target, key) {
+                let { data, props } = target
+                if(hasOwn(key, data)) {
+                    return data[key]
+                } else if(hasOwn(key, props)) {
+                    return props[key]
+                }
+                let getter = publicProperties[key]
+                if(getter) {
+                    return getter(target)
+                }
+            },
+            set(target, key, value) {
+                let { data, props } = target
+                if(hasOwn(key, data)) {
+                    data[key] = value
+                } else if(hasOwn(key, props)) {
+                    console.log('props不能修改')
+                    return false
+                }
+                return true
+            }
+        })
         const componentFn = () => {
             // 稍后组件更新也是执行这个方法
             // 这里会做依赖手机，数据变化回再次调用effect
             if (!instance.isMounted) {
                 // 第一次挂载组件
-                const subTree = render.call(state)
+                const subTree = render.call(instance.proxy)
                 patch(null, subTree, container, anchor)
-                instance.isMounted = true
                 instance.subTree = subTree
+                instance.isMounted = true
             } else {
                 // 更新组件
-                const subTree = render.call(state)
+                const subTree = render.call(instance.proxy)
                 patch(instance.subTree, subTree, container, anchor)
                 instance.subTree = subTree
             }
         }
         const effect = new ReactiveEffect(componentFn, ()=>{
             // 需要做异步更新
-            console.log(instance.update, 'instance.update')
+            // console.log(instance.update, 'instance.update')
             queueJob(instance.update)
         })
         const update = (instance.update = effect.run.bind(effect))
@@ -318,7 +354,14 @@ export function createRenderer(options) {
             // 初次渲染
             mountComponent(n2, container, anchor)
         } else {
+            // debugger
             // 组件更新 指代的组件的属性 更新 插槽更新
+            let instance = (n2.component = n1.component)
+            // console.log(instance, 'instance')
+            // instance.props.a = 'xxxx'
+            instance.props.a = n2.props.a
+
+            // todo...
         }
     }
 
