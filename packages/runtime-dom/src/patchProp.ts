@@ -14,6 +14,7 @@ export const patchProp = (el, key, prevValue, nextValue) => {
         // @click="fn1" @click="fn2"
         // invoker.fn = fn1 invoker.fn = fn2
         // @click="()=>invoker.fn()" @click="()=>invoker.fn()"
+        // console.log('888')
         patchEvent(el, key, nextValue)
     }else { // attr
         patchAttr(el, key, nextValue)

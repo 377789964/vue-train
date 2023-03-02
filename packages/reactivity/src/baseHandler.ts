@@ -1,6 +1,7 @@
 import { isObject } from "@vue/shared";
 import { activeEffect, track, trigger } from "./effect";
 import { reactive, ReactiveFlags } from "./reactive"
+import { isRef } from "./ref" 
 
 export const mutableHandlers = {
     get(target, key, receiver) { // 用户取值操作
@@ -9,6 +10,9 @@ export const mutableHandlers = {
         }
         track(target, key)
         let r = Reflect.get(target, key, receiver); // 处理了this指向问题
+        if (isRef(r)) {
+            return r.value
+        }
         if (isObject(r)) { //只有用户去值的时候才会二次代理，不用担心性能
             return reactive(r)
         }

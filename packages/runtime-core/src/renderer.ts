@@ -1,5 +1,5 @@
 import { reactive, ReactiveEffect } from "@vue/reactivity"
-import { ShapeFlags } from "@vue/shared"
+import { ShapeFlags, invokeArrayFn } from "@vue/shared"
 import { isSameVNode, Text, Fragment, isVnode } from "./vnode"
 import { queueJob } from "./scheduler"
 import { createComponentInstance, setupComponent } from './component'
@@ -152,9 +152,9 @@ export function createRenderer(options) {
             const newIndexToOldMapIndex = new Array(toBePatched).fill(0)
             for(let i = s1; i<=e1; i++) {
                 const child = c1[i]
-                const newIndex = keyToNewIndexMap.get(child.key) // 通过老的key来查找对应的心的索引
+                let newIndex = keyToNewIndexMap.get(child.key) // 通过老的key来查找对应的心的索引
                 // 如果没有newIndex有值说明有
-                if(newIndex === undefined) {
+                if(newIndex == undefined) {
                     unmount(child)
                 } else {
                     // 对比两个属性
@@ -287,32 +287,116 @@ export function createRenderer(options) {
         
     }
 
+    // const updateSlots = () => {
+
+    // }
+
+    const updateProps = (prevProps, nextProps) => {
+        // 样式diff
+        for(const key in nextProps) {
+            prevProps[key] = nextProps[key]
+        }
+        for(const key in prevProps) {
+            if(!(key in nextProps)) {
+                delete prevProps[key]
+            }
+        }
+    }
+
+    const updateComponentPreRender = (instance, next) => {
+        instance.next = null
+        instance.vnode = next // 用新节点换掉老节点
+        // instance.props.a = 'xxxx'
+        updateProps(instance.props, next.props)
+        // 将新的children 合并到插槽中
+        // updateSlots()
+        Object.assign(instance.slots, next.children)
+    }
+
     const setupRenderEffect = (instance, container, anchor) => {
         const { render } = instance
         // console.log(render, 'render')
         const componentFn = () => {
+            const { bm, m } = instance
+            console.log(m, 'm')
             // 稍后组件更新也是执行这个方法
             // 这里会做依赖手机，数据变化回再次调用effect
             if (!instance.isMounted) {
+                if(bm) {
+                    invokeArrayFn(bm)
+                }
                 // 第一次挂载组件
-                const subTree = render.call(instance.proxy)
+                const subTree = render.call(instance.proxy,instance.proxy)
                 patch(null, subTree, container, anchor)
                 instance.subTree = subTree
                 instance.isMounted = true
+                if(m) {
+                    invokeArrayFn(m)
+                }
             } else {
                 // 更新组件
-                const subTree = render.call(instance.proxy)
+                // 更新需要拿到最新的属性 和 插槽 扩展到原来的实例上
+                let { next, bu, u } = instance
+                if(next) {
+                    // 如果有next 说明属性变了或者插槽 更新了
+                    // 属性赋值会导致页面更新（响应式数据）
+                    updateComponentPreRender(instance, next)
+                }
+                if(bu) {
+                    invokeArrayFn(bu)
+                }
+                const subTree = render.call(instance.proxy, instance.proxy)
                 patch(instance.subTree, subTree, container, anchor)
                 instance.subTree = subTree
+
+                if(u) {
+                    invokeArrayFn(u)
+                }
             }
         }
         const effect = new ReactiveEffect(componentFn, ()=>{
             // 需要做异步更新
-            // console.log(instance.update, 'instance.update')
+            // console.log(instance, 'instance.update')
             queueJob(instance.update)
         })
         const update = (instance.update = effect.run.bind(effect))
         update() // 强制更新
+    }
+
+    const hasPropsChange = (prevProps = {}, nextProps = {}) => {
+        let l1 = Object.keys(prevProps)
+        let l2 = Object.keys(nextProps)
+        if(l1.length !== l2.length) {
+            return true
+        }
+        for(let i = 0; i<l1.length; i++) {
+            const key = l2[i]
+            if(nextProps[key] !== prevProps[key]){
+                return true
+            }
+        }
+        return false
+    }
+
+    const shouldComponentUpdate = (n1, n2) => {
+        const { prop: prevProps, children: prevChildren } = n1
+        const { prop: nextProps, children: nextChildren } = n2
+
+        // 对于插槽而言，只要前后有插槽 那么意味着组件要更新
+        if(prevChildren || nextChildren) return true
+        if(prevProps === nextProps) return true
+        return hasPropsChange(prevProps, nextProps)
+    }
+
+    const updateComponent = (n1, n2) => {
+        console.log('gegnxin')
+        let instance = (n2.component = n1.component)
+        // 如果组件需要更新 调用更新方法
+        if(shouldComponentUpdate(n1, n2)) {
+            // 比对属性和插槽 看要不要更新
+            instance.next = n2 // 我们将新的虚拟节点挂载到实例上
+            instance.update()
+        }
     }
 
     const processComponent = (n1, n2, container, anchor = null) => {
@@ -325,9 +409,10 @@ export function createRenderer(options) {
             let instance = (n2.component = n1.component)
             // console.log(instance, 'instance')
             // instance.props.a = 'xxxx'
-            instance.props.a = n2.props.a
+            // instance.props.a = n2.props.a
 
             // todo...
+            updateComponent(n1, n2)
         }
     }
 

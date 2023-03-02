@@ -6,6 +6,10 @@ export function ref(value) {
     return new RefImpl(value)
 }
 
+export function isRef(value) {
+    return !!(value && value.__v_isRef)
+}
+
 function toReactive(value) {
     return isObject(value) ? reactive(value) : value
 }

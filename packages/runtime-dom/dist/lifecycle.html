@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module">
+        // import { createRenderer, h, render, Text, Fragment, getCurrentInstance, ref, toRefs, reactive, onMounted } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+
+        import { createRenderer, h, render, Text, Fragment, ref, toRefs, reactive, getCurrentInstance, onMounted } from './runtime-dom.esm.js'
+
+        const VueComponent = {
+            // vue2的写法
+            // beforeCreate() {
+            //     console.log('beforeCreate')
+            // },
+            // created() {
+            //     console.log('created')
+            // },
+            // beforeMount() {
+            //     console.log('beforeMount')
+            // },
+            // mounted() {
+            //     console.log('mounted')
+            // },
+
+            // vue3的写法
+            // setup取代了创建前和创建后beforeCreate created
+            setup() {
+                const instance = getCurrentInstance()
+                console.log(instance, 'setup')
+                // 这些方法 要将instance和mounted 关联起来
+                onMounted(() => {
+                    console.log('mounted')
+                })
+                onMounted(() => {
+                    console.log('mounted')
+                })
+                return () => {
+                    return h('div', 'hellow world')
+                }
+            }
+        }
+
+        render(h(VueComponent, {}), app)
+  
+    </script>
+    
+</body>
+</html>

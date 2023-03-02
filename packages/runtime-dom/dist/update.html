@@ -21,10 +21,10 @@
         const ChildComponent = {
             props: {
                 a: String,
-                n: Object
+                b: String
             },
             render() {
-                console.log(this, this.a,  'a-n', this.n, this.$props)
+                // console.log(this, this.a,  'a-b', this.b, this.$props)
                 return h(Text, this.a) // 会把这个a变成可以收集依赖的
             }
         }
@@ -36,10 +36,12 @@
                 return h(Fragment, [
                     h('button', {
                         onClick: () => {
+                            // debugger
+                            console.log('===')
                             this.isShow = !this.isShow
                         }
                     }, '点我修改状态'),
-                    h(ChildComponent, {a: this.isShow ? '显示' : '隐藏', n: { n: 2 }})
+                    h(ChildComponent, {a: this.isShow ? '显示' : '隐藏', b: '123'})
                 ])
             }
         }

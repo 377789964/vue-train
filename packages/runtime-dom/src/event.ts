@@ -1,6 +1,6 @@
 function createInvoker(intialValue) {
     const invoker = (e) => invoker.value(e)
-    invoker.value = intialValue // 后续更细的时候值需要更新invoker的value值
+    invoker.value = intialValue // 后续更新的时候值需要更新invoker的value值
     return invoker
 }
 
@@ -15,9 +15,10 @@ export function patchEvent(el, key, nextValue) {
         // 更新事件
         exisitingInvoker.value = nextValue
     } else {
+        // console.log(nextValue, exisitingInvoker, '000')
         if(nextValue) {
             // 缓存实现
-            const invoker = (invokers[name] = createInvoker(nextValue))
+            const invoker = (invokers[name] = createInvoker(nextValue));
             el.addEventListener(name, invoker)
         } else if(exisitingInvoker) {
             el.removeEventListener(name, exisitingInvoker)

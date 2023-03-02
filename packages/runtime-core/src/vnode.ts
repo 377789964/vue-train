@@ -40,8 +40,12 @@ export function createVNode(type, props = null, children = null) {
 
     if(children) {
         let type = 0
-        if(Array.isArray(children)) { // [n个孩子]
+        if(Array.isArray(children)) {
+            // [n个孩子]
             type = ShapeFlags.ARRAY_CHILDREN
+        }else if(isObject(children)) {
+            // 孩子是插槽
+            type = ShapeFlags.SLOTS_CHILDREN
         }else { // 文本
             type = ShapeFlags.TEXT_CHILDREN
         }
