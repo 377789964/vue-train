@@ -3,7 +3,7 @@
 import { isObject } from "@vue/shared"
 import { createVNode, isVnode } from "./vnode"
 
-export function h(type, propsOrChildren, children) {
+export function h(type, propsOrChildren = null, children = []) {
     const l = arguments.length
     // h(type, {}) h(type,h('span')) h(type, [])
     // console.log(l, 'l')

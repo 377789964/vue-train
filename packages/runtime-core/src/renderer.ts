@@ -450,8 +450,12 @@ export function createRenderer(options) {
     }
 
     const unmount = (vnode) => {
+        const { shapeFlag } = vnode
         if(vnode.type === Fragment) {
             return unmountChildren(vnode.children)
+        } else if(shapeFlag & ShapeFlags.COMPONENT) {
+            // 组件如何卸载 组件渲染的是谁？ subTree
+            return unmount(vnode.component.subTree)
         }
         hostRemove(vnode.el)
     }

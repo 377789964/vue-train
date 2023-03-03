@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module">
+        // import { defineAsyncComponent, createRenderer, h, render, Text, Fragment, getCurrentInstance, ref, toRefs, reactive, onMounted } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+
+        import { defineAsyncComponent, createRenderer, h, render, Text, Fragment, ref, toRefs, reactive, getCurrentInstance, onMounted } from './runtime-dom.esm.js'
+
+        // 异步组件好处是什么 如果配合 import() 语法 可以实现文件的拆分
+        // 富文本编辑器
+        // 类似于图片懒加载 我们可以渲染一个空组件 等组件内容加载完毕后，再渲染真实组件
+
+        let VueComponent = defineAsyncComponent({
+            loader: () => new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    resolve({
+                    // reject({
+                        render() {
+                            return h(Text, 'hellow world')
+                        }
+                    })
+                }, 4000)
+            }),
+            delay: 200,
+            timeout: 3000,
+            errorComponent: {
+                render: () => h(Text, '组件加载超时')
+            },
+            loadingComponent: {
+                render: () => h(Text, 'loading')
+            },
+            onError(err, retry, fail) {
+                console.log('网络加载失败')
+                retry()
+            }
+        })
+        render(h(VueComponent), app)
+  
+    </script>
+    
+</body>
+</html>
