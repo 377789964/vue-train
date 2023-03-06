@@ -18,9 +18,9 @@ export function createRenderer(options) {
         querySelector: hostQuerySelector,
     } = options
 
-    const  mountChildren = (children, el) => {
+    const  mountChildren = (children, el, anchor = null) => {
         for(let i = 0; i < children.length; i++) {
-            patch(null, children[i], el)
+            patch(null, children[i], el, anchor)
         }
     }
 
@@ -445,6 +445,15 @@ export function createRenderer(options) {
                     processElement(n1, n2, container, anchor)
                 } else if(shapeFlag & ShapeFlags.COMPONENT){
                     processComponent(n1, n2, container)
+                } else if(shapeFlag & ShapeFlags.TELEPORT) {
+                    type.process(n1, n2, container, anchor, {
+                        mountChildren,
+                        patchChildren,
+                        query: hostQuerySelector,
+                        move(vnode, container, anchor) {
+                            hostInsert(vnode.component ? vnode.component.subTree.el : vnode.el, container, anchor)
+                        }
+                    })
                 }
         }
     }

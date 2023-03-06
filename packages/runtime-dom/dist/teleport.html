@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app" style="width: 100px; height: 100px; overflow: hidden;"></div>
+    <div id="root"></div>
+    <div id="home"></div>
+    <script type="module">
+        // import { Teleport, defineAsyncComponent, createRenderer, h, render, Text, Fragment, getCurrentInstance, ref, toRefs, reactive, onMounted } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+
+        import { Teleport, defineAsyncComponent, createRenderer, h, render, Text, Fragment, ref, toRefs, reactive, getCurrentInstance, onMounted } from './runtime-dom.esm.js'
+
+
+        const VueComponent = {
+            render() {
+                return h(Fragment, [
+                    h('div', 'hello word'),
+                    h(Teleport, {to: "#root"}, [h('div', 'teleport')]), // teleport必须是数组
+                    h(Teleport, {to: "#home"}, [h('div', 'teleport')]),
+                ])
+            }
+        }
+        
+        // render(h(Teleport, {to: "#root"}, [h('div', 'teleport')]), app)
+
+        setTimeout(() => {
+            // render(h(Teleport, {to: "#home"}, [h('div', 'teleport')]), app)
+            render(h(VueComponent), app)
+        }, 2000)
+  
+    </script>
+    
+</body>
+</html>

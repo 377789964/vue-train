@@ -1,6 +1,7 @@
 // 
 
 import { isObject, isString, ShapeFlags } from "@vue/shared";
+import { isTeleport } from "./teleport";
 
 export const Text = Symbol('text')
 export const Fragment = Symbol('fragment')
@@ -23,6 +24,8 @@ export function createVNode(type, props = null, children = null) {
 
     const shapeFlag = isString(type)
     ? ShapeFlags.ELEMENT
+    : isTeleport(type) // 因为teletport也是对象，为了区分 增加标识
+    ? ShapeFlags.TELEPORT
     : isObject(type)
     ? ShapeFlags.COMPONENT
     : 0
