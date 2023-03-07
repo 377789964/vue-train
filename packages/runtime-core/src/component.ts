@@ -15,7 +15,7 @@ export function setCurrentInstance(instance) {
 }
 
 
-export function createComponentInstance(vnode) {
+export function createComponentInstance(vnode, parent) {
     const instance = { // 组件实例
         data: null,
         isMounted: false,
@@ -31,7 +31,9 @@ export function createComponentInstance(vnode) {
         // 组件的事件
         setupState: null,
         exposed: {},
-        slots: {}
+        slots: {},
+        parent,
+        provides: parent ? parent.provides : Object.create(null)
     }
     return instance
 }

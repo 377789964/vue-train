@@ -603,7 +603,7 @@ function getCurrentInstance() {
 function setCurrentInstance(instance) {
   return currentInstance = instance;
 }
-function createComponentInstance(vnode) {
+function createComponentInstance(vnode, parent) {
   const instance = {
     data: null,
     isMounted: false,
@@ -616,7 +616,9 @@ function createComponentInstance(vnode) {
     proxy: null,
     setupState: null,
     exposed: {},
-    slots: {}
+    slots: {},
+    parent,
+    provides: parent ? parent.provides : /* @__PURE__ */ Object.create(null)
   };
   return instance;
 }
@@ -709,7 +711,7 @@ function createRenderer(options) {
     nextSibling: hostNextSibling,
     querySelector: hostQuerySelector
   } = options;
-  const mountChildren = (children, el, anchor = null) => {
+  const mountChildren = (children, el, anchor = null, parent = null) => {
     for (let i = 0; i < children.length; i++) {
       patch(null, children[i], el, anchor);
     }
@@ -719,7 +721,7 @@ function createRenderer(options) {
       unmount(children[i]);
     }
   };
-  const mountElement = (vnode, container, anchor) => {
+  const mountElement = (vnode, container, anchor, parent) => {
     const { type, props, children, shapeFlag } = vnode;
     const el = vnode.el = hostCreateElement(type);
     if (props) {
@@ -728,7 +730,7 @@ function createRenderer(options) {
       }
     }
     if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
-      mountChildren(children, el);
+      mountChildren(children, el, anchor, parent);
     } else if (shapeFlag & 8 /* TEXT_CHILDREN */) {
       hostSetElementText(el, children);
     }
@@ -865,9 +867,9 @@ function createRenderer(options) {
     patchProps(oldProps, newProps, el);
     patchChildren(n1, n2, el);
   };
-  const processElement = (n1, n2, container, anchor) => {
+  const processElement = (n1, n2, container, anchor, parent) => {
     if (n1 == null) {
-      mountElement(n2, container, anchor);
+      mountElement(n2, container, anchor, parent);
     } else {
       patchElement(n1, n2);
     }
@@ -882,15 +884,15 @@ function createRenderer(options) {
       }
     }
   };
-  const processFragment = (n1, n2, el) => {
+  const processFragment = (n1, n2, el, parent) => {
     if (n1 == null) {
-      mountChildren(n2.children, el);
+      mountChildren(n2.children, el, null, parent);
     } else {
       patchKeyChildren(n1.children, n2.children, el);
     }
   };
-  const mountComponent = (vnode, container, anchor) => {
-    const instance = vnode.component = createComponentInstance(vnode);
+  const mountComponent = (vnode, container, anchor, parent) => {
+    const instance = vnode.component = createComponentInstance(vnode, parent);
     setupComponent(instance);
     setupRenderEffect(instance, container, anchor);
   };
@@ -914,13 +916,12 @@ function createRenderer(options) {
     const { render: render3 } = instance;
     const componentFn = () => {
       const { bm, m } = instance;
-      console.log(m, "m");
       if (!instance.isMounted) {
         if (bm) {
           invokeArrayFn(bm);
         }
         const subTree = render3.call(instance.proxy, instance.proxy);
-        patch(null, subTree, container, anchor);
+        patch(null, subTree, container, anchor, instance);
         instance.subTree = subTree;
         instance.isMounted = true;
         if (m) {
@@ -935,7 +936,7 @@ function createRenderer(options) {
           invokeArrayFn(bu);
         }
         const subTree = render3.call(instance.proxy, instance.proxy);
-        patch(instance.subTree, subTree, container, anchor);
+        patch(instance.subTree, subTree, container, anchor, instance);
         instance.subTree = subTree;
         if (u) {
           invokeArrayFn(u);
@@ -979,15 +980,15 @@ function createRenderer(options) {
       instance.update();
     }
   };
-  const processComponent = (n1, n2, container, anchor = null) => {
+  const processComponent = (n1, n2, container, anchor = null, parent) => {
     if (n1 == null) {
-      mountComponent(n2, container, anchor);
+      mountComponent(n2, container, anchor, parent);
     } else {
       let instance = n2.component = n1.component;
       updateComponent(n1, n2);
     }
   };
-  const patch = (n1, n2, container, anchor = null) => {
+  const patch = (n1, n2, container, anchor = null, parent = null) => {
     if (n1 == n2) {
       return;
     }
@@ -1001,13 +1002,13 @@ function createRenderer(options) {
         processText(n1, n2, container);
         break;
       case Fragment:
-        processFragment(n1, n2, container);
+        processFragment(n1, n2, container, parent);
         break;
       default:
         if (shapeFlag & 1 /* ELEMENT */) {
-          processElement(n1, n2, container, anchor);
+          processElement(n1, n2, container, anchor, parent);
         } else if (shapeFlag & 6 /* COMPONENT */) {
-          processComponent(n1, n2, container);
+          processComponent(n1, n2, container, null, parent);
         } else if (shapeFlag & 64 /* TELEPORT */) {
           type.process(n1, n2, container, anchor, {
             mountChildren,
@@ -1172,6 +1173,28 @@ function defineAsyncComponent(options) {
   };
 }
 
+// packages/runtime-core/src/apiInject.ts
+function provide(key, value) {
+  if (!currentInstance)
+    return;
+  let provides = currentInstance.provides;
+  const parentProvides = currentInstance.parent && currentInstance.parent.provides;
+  if (provides === parentProvides) {
+    provides = currentInstance.provides = Object.create(provides);
+  }
+  provides[key] = value;
+}
+function inject(key, value) {
+  if (!currentInstance)
+    return;
+  const provides = currentInstance.parent.provides;
+  if (provides && key in provides) {
+    return provides[key];
+  } else if (value) {
+    return value;
+  }
+}
+
 // packages/runtime-dom/src/index.ts
 var renderOptions = Object.assign(nodeOps, { patchProp });
 var render = (vnode, container) => {
@@ -1197,6 +1220,7 @@ export {
   effectScope,
   getCurrentInstance,
   h,
+  inject,
   isReactive,
   isRef,
   isSameVNode,
@@ -1205,6 +1229,7 @@ export {
   onBeforeUpdate,
   onMounted,
   onUpdated,
+  provide,
   proxyRefs,
   reactive,
   recordEffectScope,

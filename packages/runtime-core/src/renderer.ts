@@ -18,7 +18,7 @@ export function createRenderer(options) {
         querySelector: hostQuerySelector,
     } = options
 
-    const  mountChildren = (children, el, anchor = null) => {
+    const  mountChildren = (children, el, anchor = null, parent = null) => {
         for(let i = 0; i < children.length; i++) {
             patch(null, children[i], el, anchor)
         }
@@ -30,7 +30,7 @@ export function createRenderer(options) {
         }
     }
 
-    const mountElement = (vnode, container, anchor) => {
+    const mountElement = (vnode, container, anchor, parent) => {
         const {type, props, children, shapeFlag} = vnode
         // 创建元素 虚拟节点上保存真实节点
         const el = (vnode.el = hostCreateElement(type))
@@ -42,7 +42,7 @@ export function createRenderer(options) {
         }
         // 处理子节点
         if(shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-            mountChildren(children, el)
+            mountChildren(children, el, anchor, parent)
         }else if(shapeFlag & ShapeFlags.TEXT_CHILDREN) {
             hostSetElementText(el, children)
         }
@@ -248,10 +248,10 @@ export function createRenderer(options) {
         patchChildren(n1, n2, el)
     }
 
-    const processElement = (n1, n2, container, anchor) => {
+    const processElement = (n1, n2, container, anchor, parent) => {
         if(n1 == null) {
             // 初次渲染
-            mountElement(n2, container, anchor)
+            mountElement(n2, container, anchor, parent)
         } else {
             // diff算法
             patchElement(n1, n2)
@@ -269,17 +269,17 @@ export function createRenderer(options) {
         }
     }
 
-    const processFragment = (n1, n2, el) => {
+    const processFragment = (n1, n2, el, parent) => {
         if(n1 == null) {
-            mountChildren(n2.children, el)
+            mountChildren(n2.children, el, null, parent)
         } else {
             patchKeyChildren(n1.children, n2.children, el)
         }
     }
 
-    const mountComponent = (vnode, container, anchor) => {
+    const mountComponent = (vnode, container, anchor, parent) => {
         // 1. 创建实例
-        const instance = (vnode.component = createComponentInstance(vnode))
+        const instance = (vnode.component = createComponentInstance(vnode, parent))
         // 2. 实例赋值属性
         setupComponent(instance)
         // 3. 创建组件的effect
@@ -318,7 +318,7 @@ export function createRenderer(options) {
         // console.log(render, 'render')
         const componentFn = () => {
             const { bm, m } = instance
-            console.log(m, 'm')
+            // console.log(m, 'm')
             // 稍后组件更新也是执行这个方法
             // 这里会做依赖手机，数据变化回再次调用effect
             if (!instance.isMounted) {
@@ -327,7 +327,8 @@ export function createRenderer(options) {
                 }
                 // 第一次挂载组件
                 const subTree = render.call(instance.proxy,instance.proxy)
-                patch(null, subTree, container, anchor)
+                // 参数instance是父组件
+                patch(null, subTree, container, anchor, instance)
                 instance.subTree = subTree
                 instance.isMounted = true
                 if(m) {
@@ -346,7 +347,7 @@ export function createRenderer(options) {
                     invokeArrayFn(bu)
                 }
                 const subTree = render.call(instance.proxy, instance.proxy)
-                patch(instance.subTree, subTree, container, anchor)
+                patch(instance.subTree, subTree, container, anchor, instance)
                 instance.subTree = subTree
 
                 if(u) {
@@ -399,10 +400,10 @@ export function createRenderer(options) {
         }
     }
 
-    const processComponent = (n1, n2, container, anchor = null) => {
+    const processComponent = (n1, n2, container, anchor = null, parent) => {
         if(n1 == null) {
             // 初次渲染
-            mountComponent(n2, container, anchor)
+            mountComponent(n2, container, anchor, parent)
         } else {
             // debugger
             // 组件更新 指代的组件的属性 更新 插槽更新
@@ -417,7 +418,7 @@ export function createRenderer(options) {
     }
 
     // 每次增加类型需要考虑 初始化 更新 销毁
-    const patch = (n1, n2, container, anchor = null) => {
+    const patch = (n1, n2, container, anchor = null, parent = null) => {
         // console.log(n1, n2, 'n1-n2')
         if(n1 == n2) {
             return // 无需更新
@@ -438,13 +439,13 @@ export function createRenderer(options) {
                 break;
             case Fragment:
                 // 处理碎片（多个div）
-                processFragment(n1, n2, container)
+                processFragment(n1, n2, container, parent)
                 break;
             default:
                 if(shapeFlag & ShapeFlags.ELEMENT) {
-                    processElement(n1, n2, container, anchor)
+                    processElement(n1, n2, container, anchor, parent)
                 } else if(shapeFlag & ShapeFlags.COMPONENT){
-                    processComponent(n1, n2, container)
+                    processComponent(n1, n2, container, null, parent)
                 } else if(shapeFlag & ShapeFlags.TELEPORT) {
                     type.process(n1, n2, container, anchor, {
                         mountChildren,

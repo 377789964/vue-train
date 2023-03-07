@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app" style="width: 100px; height: 100px; overflow: hidden;"></div>
+    <div id="root"></div>
+    <div id="home"></div>
+    <script type="module">
+        // import { toRef, inject, provide, Teleport, defineAsyncComponent, createRenderer, h, render, Text, Fragment, getCurrentInstance, ref, toRefs, reactive, onMounted } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+
+        import { toRef, inject, provide, Teleport, defineAsyncComponent, createRenderer, h, render, Text, Fragment, getCurrentInstance, ref, toRefs, reactive, onMounted } from './runtime-dom.esm.js'
+
+        // 组件通信的方式 在vue3中 关系：父子 兄弟组件 跨级通信
+        // 通过props的方式
+        // 通过事件绑定的方式
+        // 可以通过一个reactive对象来进行通讯 Vue.observable
+        // 自己编写发布订阅 vue2中 new Vue产生一个eventBus 可以借助库来实现mitt
+        // 兄弟通信 可以通过共同父母来通信
+
+        // 父 => 儿子 => 孙子
+
+        // vue是递归渲染
+
+        const GrandSon = {
+            setup() {
+                const name = inject('name')
+                const age = inject('age', 30)
+                console.log(name, age, 'name-age')
+                // const name = 1
+                // const age = 2
+                const instance = getCurrentInstance()
+                // console.log(instance, 'instance')
+                return function() {
+                    return h('div', {}, h(Text, name+age))
+                }
+            }
+        }
+        const Son = {
+            setup() {
+                const state = reactive({name: 'zf'})
+                // provide('name', 'zf')
+                // provide('age', 13)
+                // provide("name", toRef(state, 'name'))
+                return  function() {
+                    return h(GrandSon)
+                }
+            }
+            
+        }
+        const App = {
+            setup() {
+                const state = reactive({name: 'jw'})
+                provide('name', 'zf')
+                provide('age', 13)
+                // setTimeout(() => {
+                //     state.name = 'zf'
+                // }, 2000)
+                return () => {
+                    return h(Son)
+                }
+            }
+        }
+
+        render(h(App), app)
+  
+    </script>
+    
+</body>
+</html>
