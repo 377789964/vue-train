@@ -33,6 +33,7 @@ export function createComponentInstance(vnode, parent) {
         exposed: {},
         slots: {},
         parent,
+        ctx: {}, // 普通组件没有用 只有keep-alive组件有用
         provides: parent ? parent.provides : Object.create(null)
     }
     return instance
@@ -109,6 +110,7 @@ export function setupComponent(instance) {
         setCurrentInstance(instance)
 
         const setupResult = setup(instance.props, setupContext)
+        // console.log(setupResult, 'setupResult')
 
         setCurrentInstance(null)
         

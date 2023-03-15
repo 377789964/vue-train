@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app" style="width: 100px; height: 100px; overflow: hidden;"></div>
+    <div id="root"></div>
+    <div id="home"></div>
+    <script type="module">
+        // import { KeepAlive, toRef, inject, provide, Teleport, defineAsyncComponent, createRenderer, h, render, Text, Fragment, getCurrentInstance, ref, toRefs, reactive, onMounted } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+
+        import { KeepAlive, toRef, inject, provide, Teleport, defineAsyncComponent, createRenderer, h, render, Text, Fragment, getCurrentInstance, ref, toRefs, reactive, onMounted } from './runtime-dom.esm.js'
+
+        const My1 = {
+            name: 'My1',
+            setup() {
+                onMounted(() => {
+                    console.log('My1 mounted')
+                })
+                return {}
+            },
+            render: () => h('div', 'my1')
+        }
+
+        render(h(KeepAlive, null, {
+            default: () => h(My1)
+        }), app)
+
+        const My2 = {
+            name: 'My2',
+            setup() {
+                onMounted(() => {
+                    console.log('My2 mounted')
+                })
+                return {}
+            },
+            render: () => h('div', 'my2')
+        }
+
+        setTimeout(() => {
+            render(h(KeepAlive, null, {
+                default: () => h(My2)
+            }), app)
+        }, 2000)
+
+        setTimeout(() => {
+            render(h(KeepAlive, null, {
+                default: () => h(My1)
+            }), app)
+        }, 4000)
+
+  
+    </script>
+    
+</body>
+</html>

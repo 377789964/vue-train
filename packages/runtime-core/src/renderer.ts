@@ -3,6 +3,7 @@ import { ShapeFlags, invokeArrayFn } from "@vue/shared"
 import { isSameVNode, Text, Fragment, isVnode } from "./vnode"
 import { queueJob } from "./scheduler"
 import { createComponentInstance, setupComponent } from './component'
+import { isKeepAlive } from "./keep-alive"
 
 export function createRenderer(options) {
     const {
@@ -24,9 +25,9 @@ export function createRenderer(options) {
         }
     }
 
-    const  unmountChildren = (children) => {
+    const  unmountChildren = (children, parent) => {
         for(let i = 0; i < children.length; i++) {
-            unmount(children[i])
+            unmount(children[i], parent)
         }
     }
 
@@ -130,7 +131,7 @@ export function createRenderer(options) {
         // 老的多新的少
         else if(i > e2) {
             while(i<=e1) {
-                unmount(c1[i])
+                unmount(c1[i], parent)
                 i++
             }
         } else {
@@ -155,7 +156,7 @@ export function createRenderer(options) {
                 let newIndex = keyToNewIndexMap.get(child.key) // 通过老的key来查找对应的心的索引
                 // 如果没有newIndex有值说明有
                 if(newIndex == undefined) {
-                    unmount(child)
+                    unmount(child, parent)
                 } else {
                     // 对比两个属性
                     // 如果前后两个能复用的，则比较这两个节点
@@ -200,7 +201,7 @@ export function createRenderer(options) {
         
     }
 
-    const patchChildren = (n1, n2, el) => {
+    const patchChildren = (n1, n2, el, parent) => {
         // 比较 两方孩子差异
         const c1 = n1.children
         const c2 = n2.children
@@ -211,7 +212,7 @@ export function createRenderer(options) {
         if(shapeFlag & ShapeFlags.TEXT_CHILDREN) {
             // 老的是数组
             if(prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-                unmountChildren(c1)
+                unmountChildren(c1, parent)
             }
             if(c1 !== c2) {
                 // 文本内容不相同
@@ -225,7 +226,7 @@ export function createRenderer(options) {
                     patchKeyChildren(c1, c2, el)
                 }else {
                     // 组新的不是数组
-                    unmountChildren(c1)
+                    unmountChildren(c1, parent)
                 }
             } else {
                 // 老的是文本
@@ -240,12 +241,12 @@ export function createRenderer(options) {
         }
     }
 
-    const patchElement = (n1, n2) => { // 比对n1n2的属性差异
+    const patchElement = (n1, n2, parent) => { // 比对n1n2的属性差异
         let el = (n2.el = n1.el) // 复用元素
         const oldProps = n1.props || {}
         const newProps = n2.props || {}
         patchProps(oldProps, newProps, el)
-        patchChildren(n1, n2, el)
+        patchChildren(n1, n2, el, parent)
     }
 
     const processElement = (n1, n2, container, anchor, parent) => {
@@ -254,7 +255,7 @@ export function createRenderer(options) {
             mountElement(n2, container, anchor, parent)
         } else {
             // diff算法
-            patchElement(n1, n2)
+            patchElement(n1, n2, parent)
         }
     }
 
@@ -280,7 +281,20 @@ export function createRenderer(options) {
     const mountComponent = (vnode, container, anchor, parent) => {
         // 1. 创建实例
         const instance = (vnode.component = createComponentInstance(vnode, parent))
+        console.log(vnode, 'vnode.component')
         // 2. 实例赋值属性
+        // console.log(vnode, isKeepAlive(vnode), 'isKeepAlive')
+        if(isKeepAlive(vnode)) {
+            // console.log('---')
+            // 给keep-alive的ctx上增添一个属性
+            (instance.ctx as any).renderer = {
+                createElement: hostCreateElement,
+                move(vnode, container) {
+                  hostInsert(vnode.component.subTree.el, container);
+                }
+            }
+        }
+
         setupComponent(instance)
         // 3. 创建组件的effect
         setupRenderEffect(instance, container, anchor)
@@ -310,6 +324,7 @@ export function createRenderer(options) {
         updateProps(instance.props, next.props)
         // 将新的children 合并到插槽中
         // updateSlots()
+        // instance.slots = next.children
         Object.assign(instance.slots, next.children)
     }
 
@@ -402,6 +417,9 @@ export function createRenderer(options) {
 
     const processComponent = (n1, n2, container, anchor = null, parent) => {
         if(n1 == null) {
+            if(n2.shapeFlag & ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE) {
+                return parent.ctx.activate(n2, container)
+            }
             // 初次渲染
             mountComponent(n2, container, anchor, parent)
         } else {
@@ -426,7 +444,7 @@ export function createRenderer(options) {
 
         // n1 div => n2 p n1n2都有值，但是类型不同删除n1 换n2
         if(n1 && !isSameVNode(n1, n2)) {
-            unmount(n1); // 删除节点
+            unmount(n1, parent); // 删除节点
             n1 = null
         }
 
@@ -459,24 +477,32 @@ export function createRenderer(options) {
         }
     }
 
-    const unmount = (vnode) => {
+    const unmount = (vnode, parent) => {
         const { shapeFlag } = vnode
+        if (shapeFlag & ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE) {
+            // 我需要将这个真实dom 隐藏掉
+      
+            // 调用当前组件的父亲的keep-alive 让取把dom隐藏掉
+            console.log(vnode, 'unmount')
+            parent.ctx.deactivate(vnode);
+            return;
+          }
         if(vnode.type === Fragment) {
-            return unmountChildren(vnode.children)
+            return unmountChildren(vnode.children, parent)
         } else if(shapeFlag & ShapeFlags.COMPONENT) {
             // 组件如何卸载 组件渲染的是谁？ subTree
-            return unmount(vnode.component.subTree)
+            return unmount(vnode.component.subTree, parent)
         }
         hostRemove(vnode.el)
     }
 
-    const render = (vnode, container) => {
+    const render = (vnode, container, parent = null) => {
         // console.log(container, 'container')
         // vnode + dom api = 真是dom => 插入到container中
         if(vnode == null) { 
             // 卸载 删除节点
             if(container._vnode) { // 说明渲染过了才需要进行卸载
-                unmount(container._vnode)
+                unmount(container._vnode, parent)
             }
         }else {
             // 初次渲染 更新
